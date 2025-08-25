@@ -1,0 +1,216 @@
+finanças.html
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Big Trato • Financeiro</title>
+<style>
+  :root{
+    --bg:#0f1115;--card:#121822;--line:#1d2736;--muted:#9fb0c7;
+    --accent:#00ff88;--warn:#ffcc00;--danger:#ff4444;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font:14px/1.45 Arial,system-ui;background:var(--bg);color:#e8f0ff}
+  header{display:flex;align-items:center;justify-content:space-between;
+    padding:12px 16px;border-bottom:1px solid var(--line)}
+  .homebtn,.primary{border:2px solid var(--accent);background:transparent;
+    color:var(--accent);padding:8px 12px;border-radius:10px;font-weight:700;cursor:pointer}
+  .homebtn:hover,.primary:hover{background:var(--accent);color:#111}
+
+  /* Tabs */
+  .tabs{display:flex;gap:8px;justify-content:center;background:var(--card);padding:10px;border-bottom:1px solid var(--line)}
+  .tab{padding:8px 16px;border:2px solid var(--accent);border-radius:8px;color:var(--accent);cursor:pointer}
+  .tab.active{background:var(--accent);color:#111;font-weight:bold}
+
+  /* Dashboard */
+  .dashboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;padding:16px}
+  .card{background:var(--card);border:2px solid var(--accent);border-radius:12px;padding:12px;text-align:center;font-weight:bold;
+    box-shadow:0 0 6px #000 inset,0 0 6px var(--accent)}
+  .card h3{font-size:13px;color:var(--muted);margin-bottom:6px}
+  .card p{font-size:18px;color:var(--accent)}
+
+  /* Histórico */
+  .history{padding:16px}
+  table{width:100%;border-collapse:collapse;background:var(--card);border-radius:10px;overflow:hidden}
+  th,td{padding:8px;text-align:left;border-bottom:1px solid var(--line)}
+  th{background:var(--line);color:var(--accent)}
+
+  /* Botões */
+  .actions{text-align:center;padding:20px}
+  .btn{border:2px solid var(--accent);background:transparent;color:var(--accent);padding:8px 16px;margin:5px;border-radius:8px;cursor:pointer;font-weight:bold}
+  .btn:hover{background:var(--accent);color:#111}
+
+  /* Alerts */
+  .alert-yellow{border-color:var(--warn)!important;color:var(--warn)!important;box-shadow:0 0 6px var(--warn)}
+  .alert-red{border-color:var(--danger)!important;color:var(--danger)!important;box-shadow:0 0 6px var(--danger)}
+</style>
+</head>
+<body>
+<header>
+  <strong>Big Trato • Financeiro</strong>
+  <div><button class="homebtn" onclick="location.href='home.html'">Home</button></div>
+</header>
+
+<!-- Tabs -->
+<div class="tabs" id="tabs"></div>
+
+<!-- Dashboard Geral -->
+<div class="dashboard" id="dashGeral">
+  <div class="card"><h3>Receita Bruta</h3><p id="dRecBruta">R$ 0,00</p></div>
+  <div class="card"><h3>Dízimo</h3><p id="dDizimo">R$ 0,00</p></div>
+  <div class="card"><h3>Receita Líquida</h3><p id="dRecLiquida">R$ 0,00</p></div>
+  <div class="card"><h3>Despesas</h3><p id="dDespesas">R$ 0,00</p></div>
+  <div class="card"><h3>Saldo</h3><p id="dSaldo">R$ 0,00</p></div>
+</div>
+
+<!-- Caixinhas -->
+<div class="dashboard" id="dashCats">
+  <div class="card" data-cat="Dízimo"><h3>Dízimo</h3><p>R$ 0,00</p></div>
+  <div class="card" data-cat="Pró-labore"><h3>Pró-labore</h3><p>R$ 0,00</p></div>
+  <div class="card" data-cat="Custos Fixos"><h3>Custos Fixos</h3><p>R$ 0,00</p></div>
+  <div class="card" data-cat="Custos Variáveis"><h3>Custos Variáveis</h3><p>R$ 0,00</p></div>
+  <div class="card" data-cat="Reserva"><h3>Reserva</h3><p>R$ 0,00</p></div>
+  <div class="card" data-cat="Lucro Extra"><h3>Lucro Extra</h3><p>R$ 0,00</p></div>
+</div>
+
+<!-- Histórico -->
+<div class="history">
+  <h2>Histórico de Lançamentos</h2>
+  <table>
+    <thead><tr><th>Data</th><th>Tipo</th><th>Categoria</th><th>Valor</th><th>Obs</th></tr></thead>
+    <tbody id="histBody"><tr><td colspan="5" style="text-align:center;color:var(--muted)">Nenhum lançamento</td></tr></tbody>
+  </table>
+</div>
+
+<!-- Ações -->
+<div class="actions">
+  <button class="btn" id="btnExpNovos">Exportar Novos</button>
+  <button class="btn" id="btnExpTudo">Exportar Tudo</button>
+</div>
+
+<script>
+/* ===== Storage ===== */
+const LS_KEY='bt_financas';
+const LS_EXP='bt_financas_ultimoExport';
+function getLanc(){ try{return JSON.parse(localStorage.getItem(LS_KEY)||'[]')}catch{return []} }
+function setLanc(arr){ localStorage.setItem(LS_KEY,JSON.stringify(arr)); }
+function addLanc(l){ const arr=getLanc(); arr.push(l); setLanc(arr); }
+
+/* ===== Helper ===== */
+function fmt(v){ return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+function novoId(){ return Date.now(); }
+
+/* ===== Abas Mensais ===== */
+const tabsEl=document.getElementById('tabs');
+const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+let mesAtivo=new Date().getMonth();
+function renderTabs(){
+  tabsEl.innerHTML='';
+  meses.forEach((m,i)=>{
+    const b=document.createElement('div');
+    b.className='tab'+(i===mesAtivo?' active':'');
+    b.textContent=m;
+    b.onclick=()=>{ mesAtivo=i; render(); };
+    tabsEl.appendChild(b);
+  });
+}
+
+/* ===== Render ===== */
+function render(){
+  const arr=getLanc().filter(x=>new Date(x.data).getMonth()===mesAtivo);
+
+  let recBruta=0,diz=0,desp=0,liq=0,saldo=0;
+  const cats={'Dízimo':0,'Pró-labore':0,'Custos Fixos':0,'Custos Variáveis':0,'Reserva':0,'Lucro Extra':0};
+
+  arr.forEach(x=>{
+    if(x.tipo==='Entrada'){
+      recBruta+=x.valor;
+      if(x.autoDizimo){
+        diz+=x.valor*0.10;
+        liq+=x.valor*0.90;
+        cats['Dízimo']+=x.valor*0.10;
+      }else{
+        liq+=x.valor;
+        cats[x.categoria]=(cats[x.categoria]||0)+x.valor;
+      }
+      saldo+=x.valor;
+    }else{
+      desp+=x.valor;
+      cats[x.categoria]=(cats[x.categoria]||0)+x.valor;
+      saldo-=x.valor;
+    }
+  });
+
+  document.getElementById('dRecBruta').textContent=fmt(recBruta);
+  document.getElementById('dDizimo').textContent=fmt(diz);
+  document.getElementById('dRecLiquida').textContent=fmt(liq);
+  document.getElementById('dDespesas').textContent=fmt(desp);
+  document.getElementById('dSaldo').textContent=fmt(saldo);
+
+  // atualizar categorias
+  document.querySelectorAll('#dashCats .card').forEach(c=>{
+    const cat=c.dataset.cat;
+    const v=cats[cat]||0;
+    const pEl=c.querySelector('p');
+    pEl.textContent=fmt(v);
+
+    // alerta (usando limites fixos de exemplo, pode personalizar)
+    c.classList.remove('alert-yellow','alert-red');
+    if(cat==='Pró-labore'){
+      const limite=1300; 
+      const perc=v/limite*100;
+      if(perc>=90) c.classList.add('alert-red');
+      else if(perc>=60) c.classList.add('alert-yellow');
+    }
+  });
+
+  // histórico
+  const body=document.getElementById('histBody');
+  body.innerHTML='';
+  if(arr.length===0){
+    body.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted)">Nenhum lançamento</td></tr>';
+  }else{
+    arr.slice().reverse().forEach(x=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${new Date(x.data).toLocaleDateString()}</td>
+        <td>${x.tipo}</td><td>${x.categoria}</td><td>${fmt(x.valor)}</td><td>${x.obs||''}</td>`;
+      body.appendChild(tr);
+    });
+  }
+}
+
+/* ===== Exportar ===== */
+function exportar(filtrarNovos){
+  const arr=getLanc();
+  let lastExp=Number(localStorage.getItem(LS_EXP)||0);
+  let novos=filtrarNovos?arr.filter(x=>x.id>lastExp):arr;
+  if(novos.length===0){ alert('Nada novo para exportar.'); return; }
+
+  const csv=['id,data,tipo,categoria,valor,obs'];
+  novos.forEach(x=>csv.push([x.id,x.data,x.tipo,x.categoria,x.valor,x.obs||''].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')));
+
+  const blob=new Blob([csv.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='financas.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+
+  if(filtrarNovos){ localStorage.setItem(LS_EXP,Math.max(...novos.map(x=>x.id))); }
+}
+document.getElementById('btnExpNovos').onclick=()=>exportar(true);
+document.getElementById('btnExpTudo').onclick=()=>exportar(false);
+
+/* ===== API pública p/ outros módulos ===== */
+window.btFinanceiroAdd=function({data=new Date().toISOString(),tipo='Entrada',valor=0,categoria='Lucro Extra',obs='',autoDizimo=false}){
+  const lanc={id:novoId(),data,tipo,valor:Number(valor),categoria,obs,autoDizimo};
+  addLanc(lanc); render();
+};
+
+/* ===== Início ===== */
+renderTabs(); render();
+</script>
+</body>
+</html>

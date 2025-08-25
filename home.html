@@ -1,0 +1,107 @@
+<!DOCTYPE html><html lang="pt-BR"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Big Trato • Home</title>
+<style>
+:root{--bg:#0f1115;--card:#121822;--line:#1d2736;--muted:#9fb0c7;--title:#cfe3ff;--accent:#00ff88;--accent-2:#1fd2a0;--btn-bg:#0e1420;--hover:rgba(0,255,136,.12)}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:#e8f0ff;font:14px/1.45 Arial,system-ui}
+header{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
+.grow{flex:1}.gear{border:1px solid var(--line);background:transparent;color:#cde;padding:10px 12px;border-radius:10px;cursor:pointer}
+.gear:hover{border-color:var(--accent);color:var(--accent)}
+.wrap{max-width:1100px;margin:26px auto;padding:0 16px}
+.logoBox{display:flex;justify-content:center;margin-bottom:18px}
+.logo{max-width:min(90vw,950px);object-fit:contain}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}@media(max-width:860px){.grid{grid-template-columns:1fr}}
+fieldset{border:1px solid var(--line);border-radius:14px;padding:14px;background:var(--card)}
+legend{padding:0 10px;color:var(--title);font-weight:700;letter-spacing:.5px}
+.stack{display:grid;gap:10px;margin-top:4px}.stack .btn{width:100%;text-align:center}
+.btn{padding:14px;border-radius:12px;border:2px solid var(--accent-2);background:var(--btn-bg);color:#e8fff7;font-weight:700;cursor:pointer}
+.btn:hover{background:var(--hover)} .sub{font-size:12px;color:#9fb0c7;margin-top:4px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:16px;z-index:20}
+.panel{background:#0f1522;border:1px solid var(--line);border-radius:12px;padding:16px;max-width:560px;width:100%}
+.grid1{display:grid;grid-template-columns:1fr;gap:10px} input{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:#0e1420;color:#e8f0ff}
+.right{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
+</style></head><body><script>try{window.name='BT_HOME';}catch(_){}</script>
+<header><strong>Big Trato • Home</strong><div class="grow"></div>
+<button id="btnPrefs" class="gear" title="Preferências (caminho do Gerador / calendário)">⚙️ Preferências</button></header>
+
+<div class="wrap">
+  <div class="logoBox">
+    <img id="logo" class="logo" alt="Big Trato" draggable="false">
+    <input id="logoPicker" type="file" accept="image/png,image/jpeg,image/svg+xml" style="display:none">
+  </div>
+
+  <div class="grid">
+    <fieldset><legend>EMPRESA</legend>
+      <div class="stack">
+        <button class="btn" data-soon="Produtos">Produtos</button>
+        <button class="btn" data-soon="Serviços">Serviços</button>
+        <!-- botão Finanças agora tem id -->
+        <button id="btnFinancas" class="btn" title="Abrir módulo Financeiro">Finanças</button>
+        <div class="sub">Esses módulos entram depois. Navegação já preparada.</div>
+      </div>
+    </fieldset>
+
+    <fieldset><legend>CLIENTE</legend>
+      <div class="stack">
+        <button id="btnCadastro" class="btn" title="Abrir Cadastro de Cliente">Cadastro</button>
+        <button id="btnCRM"   class="btn" title="Abrir Painel (CRM)">CRM</button>
+        <button id="btnGerar" class="btn" title="Abrir Gerador de Orçamentos">Gerar Orçamento</button>
+        <div class="sub">O CRM abre o Painel. “Gerar Orçamento” abre o Gerador (PDF).</div>
+      </div>
+    </fieldset>
+  </div>
+</div>
+
+<!-- Preferências -->
+<div class="modal" id="modalPrefs"><div class="panel">
+  <h3 style="margin:0 0 10px">Preferências</h3>
+  <div class="grid1">
+    <div>
+      <label>ID do calendário “Big Trato” (opcional)</label>
+      <input id="prefCalId" placeholder="ex: abc123@group.calendar.google.com">
+      <div class="sub">Calendar → ⚙️ → Big Trato → Integrar agenda → copie <b>ID da agenda</b>.</div>
+    </div>
+    <div>
+      <label>Caminho/Nome do arquivo do Gerador</label>
+      <input id="prefGeradorPath" placeholder="Gerador de orçamentos.html (mesma pasta) OU D:\Big Trato\...\Gerador de orçamentos.html">
+      <div class="sub">Pode colar o caminho do Windows. Eu converto para <code>file:///</code> automaticamente.</div>
+    </div>
+  </div>
+  <div class="right"><button id="prefsClose" class="btn" style="border-style:dashed">Fechar</button><button id="prefsSave" class="btn">Salvar</button></div>
+</div></div>
+
+<script>
+/* ===== config “congelada” ===== */
+const HOME_CFG_KEY='bt_home_cfg_v1'; const HOME_CFG_DEFAULT={version:'1.0.0',logoPx:370};
+if(!localStorage.getItem(HOME_CFG_KEY)) localStorage.setItem(HOME_CFG_KEY, JSON.stringify(HOME_CFG_DEFAULT));
+const CFG=JSON.parse(localStorage.getItem(HOME_CFG_KEY));
+
+/* logo compartilhado */
+const LS_LOGO='bigtrato_logo_dataurl';
+const EMBEDDED_LOGO="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='200'%3E%3Crect width='100%25' height='100%25' fill='black'/%3E%3Ctext x='50%25' y='62%25' text-anchor='middle' font-family='Segoe UI, Arial' font-size='72' fill='%239FFFD7'%3EBig Trato%3C/text%3E%3C/svg%3E";
+const logo=document.getElementById('logo'), picker=document.getElementById('logoPicker');
+logo.src=localStorage.getItem(LS_LOGO)||EMBEDDED_LOGO; logo.style.height=CFG.logoPx+'px';
+logo.addEventListener('dblclick',()=>picker.click());
+picker.addEventListener('change',e=>{const f=e.target.files?.[0]; if(!f) return; const fr=new FileReader(); fr.onload=()=>{localStorage.setItem(LS_LOGO,fr.result); logo.src=fr.result;}; fr.readAsDataURL(f);});
+
+/* Preferências */
+const PREFS_CAL='bt_calendar_id', PREFS_GER='bt_gerador_path';
+const modal=document.getElementById('modalPrefs'), calInp=document.getElementById('prefCalId'), gerInp=document.getElementById('prefGeradorPath');
+document.getElementById('btnPrefs').onclick=()=>{calInp.value=localStorage.getItem(PREFS_CAL)||''; gerInp.value=localStorage.getItem(PREFS_GER)||'Gerador de orçamentos.html'; modal.style.display='flex';};
+document.getElementById('prefsClose').onclick=()=>modal.style.display='none';
+document.getElementById('prefsSave').onclick=()=>{localStorage.setItem(PREFS_CAL,(calInp.value||'').trim()); localStorage.setItem(PREFS_GER,(gerInp.value||'Gerador de orçamentos.html').trim()); modal.style.display='none'; alert('Preferências salvas.');};
+
+/* resolver caminho do gerador (pode ser caminho do Windows) */
+function winPathToFileURL(p){const m=/^[A-Za-z]:[\\/]/.exec(p); if(!m) return null; let d=p[0].toUpperCase(); let r=p.slice(2).replace(/\\/g,'/'); if(!r.startsWith('/')) r='/'+r; r=r.split('/').map(s=>encodeURIComponent(s)).join('/'); return `file:///${d}:${r}`;}
+function resolveGeradorURL(){const raw=(localStorage.getItem(PREFS_GER)||'Gerador de orçamentos.html').trim(); if(/^https?:\/\//i.test(raw)||/^file:\/\//i.test(raw)) return raw; const maybe=winPathToFileURL(raw); if(maybe) return maybe; try{return new URL(raw, location.href).toString();}catch{return raw;}}
+
+/* >>> Navegar NA MESMA ABA */
+document.getElementById('btnCadastro').onclick = ()=> location.href = 'Cadastro.html';
+document.getElementById('btnCRM').onclick      = ()=> location.href = 'painel.html';
+document.getElementById('btnGerar').onclick    = ()=> location.href = resolveGeradorURL();
+document.getElementById('btnFinancas').onclick = ()=> location.href = 'financas.html';
+
+/* “em breve” */
+document.querySelectorAll('[data-soon]').forEach(b=>b.addEventListener('click',()=>alert(`${b.dataset.soon}: em breve.`)));
+</script>
+</body></html>

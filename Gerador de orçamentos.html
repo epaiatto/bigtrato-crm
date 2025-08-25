@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Gerador de Orçamentos - Big Trato</title>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{ --neon:#00ff88; --bg:#101114; --panel:#12181f; --line:#1f2a3a; --muted:#a8b3c7; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:#eaf3ff;font:14px/1.45 Arial,system-ui}
+
+  .topbar{
+    position:sticky; top:0; z-index:10;
+    display:grid; grid-template-columns:160px 1fr 160px; align-items:center;
+    gap:10px; padding:10px 16px; background:#0f141c; border-bottom:1px solid #1b2533;
+  }
+  .topbar .slot{display:flex; align-items:center; justify-content:center}
+  .topbar .slot.left{justify-content:flex-start}
+  .topbar .slot.right{justify-content:flex-end}
+  .topbar .brand{display:flex; flex-direction:column; align-items:center; gap:6px}
+  .brand img{height:54px; width:auto; filter:drop-shadow(0 0 8px var(--neon)); cursor:pointer}
+  .brand h1{margin:0; font-size:20px; letter-spacing:.6px; color:var(--neon); text-shadow:0 0 10px var(--neon); font-weight:800}
+
+  /* badge “atualizado em …” */
+  .badge{
+    font-size:12px; padding:2px 10px; border-radius:999px;
+    border:1px solid var(--neon); color:var(--neon); background:#0e1520;
+    box-shadow:0 0 8px rgba(0,255,136,.25);
+  }
+  .hidden{display:none}
+
+  .btn{
+    border:2px solid var(--neon); background:transparent; color:var(--neon);
+    padding:8px 14px; border-radius:12px; font-weight:800; cursor:pointer;
+    box-shadow:0 0 10px var(--neon); transition:.15s;
+  }
+  .btn:hover{background:var(--neon); color:#0b0f15}
+
+  .wrap{max-width:1060px; margin:20px auto 96px; padding:0 16px}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px; box-shadow:0 0 20px rgba(0,255,136,.25)}
+  label{display:block; margin-top:10px}
+  input,select,textarea{width:100%; margin-top:6px; padding:10px; border-radius:10px; border:1px solid #243246; background:#0f141c; color:#eaf3ff; font-size:14px}
+  textarea{min-height:84px; resize:vertical}
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  .row-3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px}
+
+  .tableHead,.rowItem{display:grid; grid-template-columns:2fr 70px 120px 1.7fr 120px 42px; gap:8px; align-items:center}
+  .tableHead{margin-top:10px; padding:8px 10px; background:#0e1520; border-radius:8px; border:1px solid #213049; color:#cfe; font-weight:700}
+  #lista{list-style:none; margin:8px 0 0; padding:0}
+  #lista li{padding:8px 10px; border:1px solid #1f2a3a; border-radius:10px; margin-bottom:8px; background:#0f141c}
+  #lista li .rtotal{font-weight:800; text-align:right; padding-right:4px}
+  #lista li button.remover{border:2px solid #ff5c5c; background:#0c121a; color:#ff8484; border-radius:10px; padding:8px; font-weight:800; cursor:pointer}
+  #lista li button.remover:hover{background:#ff5c5c; color:#0b0f15}
+  .placeholder{opacity:.8; padding:10px; text-align:center; border:1px dashed #2a3a52; border-radius:10px}
+
+  .kpis{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:14px}
+  .kpi{background:#0f141c; border:1px solid #1f2a3a; border-radius:12px; padding:12px; text-align:center}
+  .kpi small{opacity:.85; color:#c6d3ea}
+  .kpi b{display:block; margin-top:6px; font-size:17px; color:#d9ffe9}
+
+  .muted{opacity:.85; color:#c6d3ea}
+
+  .bottombar{
+    position:fixed; left:0; right:0; bottom:0; background:#0f141c; border-top:1px solid #1b2533; padding:10px 16px; z-index:9;
+    display:flex; justify-content:center; gap:10px;
+  }
+  .btn-big{min-width:210px; padding:14px 18px; border-radius:14px; font-size:16px}
+</style>
+</head>
+<body>
+<script>try{window.name='BT_GERADOR';}catch(_){}</script>
+
+<div class="topbar">
+  <div class="slot left"><button class="btn" id="btnHome">Home</button></div>
+  <div class="slot brand">
+    <img id="logo" alt="Big Trato" draggable="false"/>
+    <input id="logoPicker" class="hidden" type="file" accept="image/png,image/jpeg,image/svg+xml" />
+    <h1>GERADOR DE ORÇAMENTOS</h1>
+    <span id="updBadge" class="badge hidden"></span>
+  </div>
+  <div class="slot right"><button class="btn" id="btnCRM" title="Abrir Painel (CRM)">CRM</button></div>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <div class="row">
+      <div><label>Cliente</label><input id="cliente" placeholder="Nome do cliente" /></div>
+      <div><label>Endereço</label><input id="endereco" placeholder="Endereço do cliente" /></div>
+    </div>
+
+    <div class="row-3">
+      <div><label>Locomoção (R$)</label><input id="locomocao" class="money" type="text" value="R$ 0,00" /></div>
+      <div><label>Desconto (%)</label><input id="descontoPct" type="number" step="0.01" value="0" /></div>
+      <div>
+        <label>Forma de Pagamento</label>
+        <select id="pagamento">
+          <option>Crédito em até 2x sem juros ou PIX</option>
+          <option>PIX à vista</option>
+          <option>Cartão 1x</option>
+          <option>Cartão 2x sem juros</option>
+          <option>Cartão 3x com juros</option>
+          <option>Dinheiro</option>
+          <option value="__custom">Personalizar…</option>
+        </select>
+        <input id="pagamentoCustom" class="hidden" placeholder="Descreva a condição" />
+      </div>
+    </div>
+
+    <label>Serviço</label>
+    <div class="row" style="grid-template-columns:1fr 120px auto; align-items:end">
+      <select id="servico">
+        <option value="Sofá 2 lugares (simples)|180">Sofá 2 lugares (simples) — R$ 180,00</option>
+        <option value="Sofá 3 lugares (simples)|210">Sofá 3 lugares (simples) — R$ 210,00</option>
+        <option value="Sofá 4 lugares (simples)|250">Sofá 4 lugares (simples) — R$ 250,00</option>
+        <option value="Sofá 3 lugares retrátil|210">Sofá 3 lugares retrátil — R$ 210,00</option>
+        <option value="Sofá 4 lugares retrátil|260">Sofá 4 lugares retrátil — R$ 260,00</option>
+        <option value="Sofá 5 lugares retrátil|300">Sofá 5 lugares retrátil — R$ 300,00</option>
+        <option value="Sofá chaise|200">Sofá chaise — R$ 200,00</option>
+        <option value="Cadeira — Assento|25">Cadeira — Assento — R$ 25,00</option>
+        <option value="Cadeira — Encosto Frontal|40">Cadeira — Encosto Frontal — R$ 40,00</option>
+        <option value="Cadeira — Completa|50">Cadeira — Completa — R$ 50,00</option>
+        <option value="Colchão — Solteiro (qualquer tamanho)|150">Colchão — Solteiro — R$ 150,00</option>
+        <option value="Colchão — Viúva (2,00 x 1,20)|180">Colchão — Viúva — R$ 180,00</option>
+        <option value="Colchão — Casal (1,88 x 1,38)|195">Colchão — Casal — R$ 195,00</option>
+        <option value="Colchão — Queen (1,98 x 1,58)|235">Colchão — Queen — R$ 235,00</option>
+        <option value="Colchão — King (2,03 x 1,93)|294">Colchão — King — R$ 294,00</option>
+        <option value="Cama Box — King/Queen/Casal|150">Cama Box — King/Queen/Casal — R$ 150,00</option>
+        <option value="Cama Box — Solteiro/Viúva|120">Cama Box — Solteiro/Viúva — R$ 120,00</option>
+        <option value="Poltrona — Cadeira|60">Poltrona — Cadeira — R$ 60,00</option>
+        <option value="Poltrona — Amamentação|80">Poltrona — Amamentação — R$ 80,00</option>
+        <option value="Poltrona — Puffs|0">Poltrona — Puffs — Cortesia</option>
+        <option value="Puff Assento|50">Puff Assento — R$ 50,00</option>
+        <option value="Baú Suede|100">Baú Suede — R$ 100,00</option>
+        <option value="Bebê Conforto/Moises|35">Bebê Conforto/Moises — R$ 35,00</option>
+        <option value="Carrinho bebê (até 10kg)|80">Carrinho bebê (até 10kg) — R$ 80,00</option>
+        <option value="Carrinho bebê (acima de 10kg)|100">Carrinho bebê (acima de 10kg) — R$ 100,00</option>
+        <option value="Carrinho bebê (assento até 50cm) — cada|35">Carrinho bebê — assento até 50cm (cada) — R$ 35,00</option>
+        <option value="Cabeceira|150">Cabeceira — R$ 150,00</option>
+        <option value="Encostos e assentos avulsos (casal)|160">Encostos e assentos avulsos (casal) — R$ 160,00</option>
+        <option value="Chiqueirinho|150">Chiqueirinho — R$ 150,00</option>
+        <option value="Impermeabilização — Sofá 2 lugares (base)|__imp60">Impermeabilização — Sofá 2 lugares (acréscimo 60% do sofá)</option>
+        <option value="Impermeabilização — Sofá 3 lugares (base)|__imp60">Impermeabilização — Sofá 3 lugares (acréscimo 60% do sofá)</option>
+        <option value="Impermeabilização — Sofá 4 lugares (base)|__imp60">Impermeabilização — Sofá 4 lugares (acréscimo 60% do sofá)</option>
+      </select>
+      <input id="quantidade" type="number" min="1" value="1" />
+      <div style="display:flex; gap:8px; justify-content:flex-end">
+        <button class="btn" id="btnAdd">Adicionar</button>
+        <button class="btn" id="btnAddManual">Serviço manual</button>
+      </div>
+    </div>
+
+    <div class="tableHead">
+      <small>Descrição</small><small style="text-align:center">Qtd</small>
+      <small>Unitário (R$)</small><small>Obs. do item</small>
+      <small style="text-align:right">Total</small><small></small>
+    </div>
+    <ul id="lista"></ul>
+    <div id="emptyHint" class="placeholder">Nenhum item adicionado. Use “Adicionar” ou “Serviço manual”.</div>
+
+    <label style="margin-top:12px">Observações gerais</label>
+    <textarea id="observacoes" placeholder="Ex.: Estacionamento por conta do cliente. Horário a combinar."></textarea>
+
+    <div class="row" style="margin-top:8px">
+      <div>
+        <label>Validade do orçamento (dias)</label>
+        <input id="validadeDias" type="number" min="1" value="7" />
+        <div class="muted" id="validadePreview" style="margin-top:4px"></div>
+      </div>
+      <div></div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><small>Subtotal</small><b id="k_sub">R$ 0,00</b></div>
+      <div class="kpi"><small>Desconto</small><b id="k_desc">R$ 0,00</b></div>
+      <div class="kpi"><small>Locomoção</small><b id="k_loc">R$ 0,00</b></div>
+      <div class="kpi"><small>Total</small><b id="k_tot">R$ 0,00</b></div>
+    </div>
+
+    <p class="muted" style="margin-top:8px">Se o jsPDF não carregar, o botão abre a impressão do navegador (Salvar como PDF).</p>
+  </div>
+</div>
+
+<div class="bottombar">
+  <button class="btn btn-big" id="btnPdf">Gerar PDF</button>
+  <button class="btn btn-big hidden" id="btnSaveOnly">Salvar orçamento</button>
+</div>
+
+<script>
+  /* =========== CONFIG “CONGELADA” (layout 00014) =========== */
+  const CFG_KEY='bt_cfg_v1';
+  const CONFIG_APROVADA_DEFAULT={
+    version:'1.1.5', frozen:true, layout:'00014',
+    wm:{enabled:true,opacity:0.32,scale:0.78,yOffset:-6},
+    colors:{accent:[0,140,90],hdrBg:[210,245,230],boxBorder:[170,170,170],rowA:[236,236,236],rowB:[246,246,246],tableBorder:[160,160,160]},
+    margins:{top:36,right:44,bottom:42,left:44},
+    fonts:{base:11,small:9,sec:12,h1:18}
+  };
+  if(!localStorage.getItem(CFG_KEY)) localStorage.setItem(CFG_KEY,JSON.stringify(CONFIG_APROVADA_DEFAULT));
+  const CFG=JSON.parse(localStorage.getItem(CFG_KEY)||JSON.stringify(CONFIG_APROVADA_DEFAULT));
+
+  /* =========== LOGO fixo =========== */
+  const DEFAULT_LOGO="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='200'%3E%3Crect width='100%25' height='100%25' rx='18' ry='18' fill='black'/%3E%3Ctext x='50%25' y='62%25' text-anchor='middle' font-family='Segoe UI, Arial' font-size='72' fill='%239FFFD7'%3EBig Trato%3C/text%3E%3C/svg%3E";
+  const LS_LOGO='bigtrato_logo_dataurl';
+  const logoImg=document.getElementById('logo');
+  const savedLogo=(()=>{try{return localStorage.getItem(LS_LOGO)}catch{return null}})();
+  logoImg.src=savedLogo||DEFAULT_LOGO;
+  const logoPicker=document.getElementById('logoPicker');
+  logoImg.addEventListener('dblclick',()=>logoPicker.click());
+  logoPicker.addEventListener('change',e=>{
+    const f=e.target.files?.[0]; if(!f) return;
+    const fr=new FileReader();
+    fr.onload=()=>{try{localStorage.setItem(LS_LOGO,fr.result);}catch{} logoImg.src=fr.result;};
+    fr.readAsDataURL(f);
+  });
+
+  /* =========== Navegação =========== */
+  document.getElementById('btnHome').onclick=()=>{ location.href='home.html'; };
+  document.getElementById('btnCRM').onclick=()=>{ location.href='painel.html'; };
+
+  /* =========== Helpers =========== */
+  const brl = n => (Number(n)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  const L = s => Number(String(s).replace(/[^\d]/g,'')||0)/100;
+  const addDays=(date,days)=>{const d=new Date(date); d.setDate(d.getDate()+Number(days||0)); return d;};
+  const dataBR=d=>d.toLocaleDateString('pt-BR');
+  const dtBR = iso => new Date(iso).toLocaleString('pt-BR');
+
+  function attachMoneyMask(input){
+    const render=v=>{ input.value=brl(v); };
+    input.addEventListener('input',e=>{
+      const cents=String(e.target.value).replace(/[^\d]/g,''); render((Number(cents)||0)/100); recompute();
+    });
+    input.addEventListener('focus',()=>setTimeout(()=>input.select(),0));
+    input.addEventListener('blur',()=>{ render(L(input.value)); recompute(); });
+    render(L(input.value));
+  }
+
+  /* =========== Estado/KPIs =========== */
+  const itens=[], listaEl=document.getElementById('lista'), emptyHint=document.getElementById('emptyHint');
+  const subEl=document.getElementById('k_sub'), descEl=document.getElementById('k_desc'), locEl=document.getElementById('k_loc'), totEl=document.getElementById('k_tot');
+  const validadeDiasEl=document.getElementById('validadeDias'), validadePreview=document.getElementById('validadePreview');
+  const pagamentoSel=document.getElementById('pagamento'), pagamentoCustom=document.getElementById('pagamentoCustom');
+  const updBadge=document.getElementById('updBadge');
+  const btnSaveOnly=document.getElementById('btnSaveOnly');
+
+  pagamentoSel.addEventListener('change',()=>{
+    pagamentoCustom.classList.toggle('hidden', pagamentoSel.value!=='__custom');
+    if(!pagamentoCustom.classList.contains('hidden')) pagamentoCustom.focus();
+  });
+
+  function atualizarValidadePreview(){
+    const dias=Number(validadeDiasEl.value)||0;
+    validadePreview.textContent=dias>0?`Válido por ${dias} dia(s) — até ${dataBR(addDays(new Date(), dias))}`:'';
+  }
+  validadeDiasEl.addEventListener('input', atualizarValidadePreview); atualizarValidadePreview();
+
+  function recompute(){
+    const subtotal = itens.reduce((a,it)=>a+(Number(it.preco)||0)*(Number(it.qtd)||0),0);
+    const pct = Number(document.getElementById('descontoPct').value)||0;
+    const desconto = subtotal*(pct/100);
+    const loco = L(document.getElementById('locomocao').value);
+    const total = subtotal - desconto + loco;
+    subEl.textContent=brl(subtotal); descEl.textContent=brl(desconto); locEl.textContent=brl(loco); totEl.textContent=brl(total);
+    return {subtotal,desconto,loco,total};
+  }
+
+  attachMoneyMask(document.getElementById('locomocao'));
+  document.getElementById('descontoPct').addEventListener('input',()=>{recompute(); updateRowTotals();});
+
+  function updateRowTotals(){
+    [...listaEl.querySelectorAll('li')].forEach((li,idx)=>{
+      const it=itens[idx]; const rt=li.querySelector('.rtotal');
+      if(rt) rt.textContent = brl((Number(it.preco)||0)*(Number(it.qtd)||0));
+    });
+  }
+
+  function liRow(it,i){
+    const li=document.createElement('li');
+    li.innerHTML=`
+      <div class="rowItem">
+        <input class="desc" value="${it.nome}">
+        <input class="qtd" type="number" min="1" value="${it.qtd}">
+        <input class="unit" value="${brl(it.preco)}" />
+        <textarea class="obs" placeholder="Obs. do item...">${it.obs||''}</textarea>
+        <div class="rtotal">${brl((it.preco||0)*(it.qtd||0))}</div>
+        <button type="button" class="remover" title="Remover">✕</button>
+      </div>`;
+    const desc=li.querySelector('.desc'), qtd=li.querySelector('.qtd'), unit=li.querySelector('.unit'), obs=li.querySelector('.obs');
+
+    desc.addEventListener('input',()=>it.nome=desc.value);
+    qtd.addEventListener('input',()=>{it.qtd=Math.max(1,Number(qtd.value)||1); updateRowTotals(); recompute();});
+    const moneyMask=(el)=>{el.addEventListener('input',e=>{const cents=String(e.target.value).replace(/[^\d]/g,''); el.value=brl((Number(cents)||0)/100); it.preco=L(el.value); updateRowTotals(); recompute();}); el.addEventListener('focus',()=>setTimeout(()=>el.select(),0));};
+    moneyMask(unit);
+    obs.addEventListener('input',()=>it.obs=obs.value);
+    li.querySelector('.remover').onclick=()=>{itens.splice(i,1); render();};
+    return li;
+  }
+
+  function render(){
+    listaEl.innerHTML=''; itens.forEach((it,i)=>listaEl.appendChild(liRow(it,i)));
+    emptyHint.style.display = itens.length? 'none' : 'block';
+    recompute();
+  }
+
+  document.getElementById('btnAdd').onclick=()=>{
+    const [nome,raw]=document.getElementById('servico').value.split('|');
+    let preco;
+    if(raw==='__imp60'){ const base=prompt('Valor do sofá correspondente (para aplicar 60%):','0'); preco=(Number(base)||0)*0.60; }
+    else { preco=Number(raw)||0; }
+    const qtd=Math.max(1, Number(document.getElementById('quantidade').value)||1);
+    itens.push({nome,preco,qtd,obs:''}); render();
+  };
+  document.getElementById('btnAddManual').onclick=()=>{
+    const nome=prompt('Descrição do serviço:',''); if(!nome) return;
+    const v=prompt('Valor unitário (R$):','0'); itens.push({nome,preco:(Number(v)||0),qtd:1,obs:''}); render();
+  };
+
+  /* ===== Carregar orçamento do CRM (para manter número) ===== */
+  let currentQuoteId = null;
+  (function(){
+    let raw=null; try{ raw=localStorage.getItem('bt_load_quote'); }catch{}
+    if(!raw) return;
+    let q=null; try{ q=JSON.parse(raw); }catch{ q=null; }
+    try{ localStorage.removeItem('bt_load_quote'); }catch{}
+    if(!q) return;
+
+    currentQuoteId = q.id ?? null;
+    if(currentQuoteId!=null){ btnSaveOnly.classList.remove('hidden'); }
+
+    if(q.updatedAt){
+      updBadge.textContent = 'Atualizado em ' + dtBR(q.updatedAt);
+      updBadge.classList.remove('hidden');
+    }else if(q.createdAt){
+      updBadge.textContent = 'Criado em ' + dtBR(q.createdAt);
+      updBadge.classList.remove('hidden');
+    }
+
+    document.getElementById('cliente').value=q.cliente||'';
+    document.getElementById('endereco').value=q.endereco||'';
+    document.getElementById('observacoes').value=q.observacoes||'';
+    document.getElementById('validadeDias').value=q.validadeDias||7;
+    document.getElementById('descontoPct').value=q.descontoPct||0;
+
+    const sel=document.getElementById('pagamento'), custom=document.getElementById('pagamentoCustom');
+    if(q.pagamento){
+      const opt=[...sel.options].find(o=>o.value===q.pagamento || o.textContent===q.pagamento);
+      if(opt){ sel.value=opt.value; custom.classList.add('hidden'); }
+      else { sel.value='__custom'; custom.classList.remove('hidden'); custom.value=q.pagamento; }
+    }
+    document.getElementById('locomocao').value=brl(q.locomocao||0);
+
+    itens.length=0; (q.itens||[]).forEach(it=>itens.push({nome:it.nome||'', preco:Number(it.preco)||0, qtd:Number(it.qtd)||1, obs:it.obs||''}));
+    render();
+  })();
+
+  /* ===== Numerador local quando não vem do CRM ===== */
+  function getOrcamentoNumero(){
+    if(currentQuoteId!=null){ return String(currentQuoteId).padStart(5,'0'); }
+    const K='bt_seq'; let n=Number(localStorage.getItem(K)||0)+1; localStorage.setItem(K,String(n)); return String(n).padStart(5,'0');
+  }
+
+  /* ===== Persistência no Painel ===== */
+  const LS_QUOTES='bt_quotes';
+  function getQuotes(){ try{return JSON.parse(localStorage.getItem(LS_QUOTES)||'[]')}catch{return []} }
+  function setQuotes(arr){ try{ localStorage.setItem(LS_QUOTES, JSON.stringify(arr)); }catch(_){} }
+
+  /** monta payload para salvar/atualizar no CRM **/
+  function buildPayload(idForSave, keepCreatedFromBase){
+    const cliente=(document.getElementById('cliente').value||'-').trim();
+    const endereco=(document.getElementById('endereco').value||'').trim();
+    const pagamento = (document.getElementById('pagamento').value==='__custom'
+                      ? (document.getElementById('pagamentoCustom').value||'')
+                      : document.getElementById('pagamento').value) || 'Crédito em até 2x sem juros ou PIX';
+    const obs = (document.getElementById('observacoes').value||'').trim();
+    const diasVal = Number(document.getElementById('validadeDias').value)||0;
+    const pctDesc = Number(document.getElementById('descontoPct').value)||0;
+    const {total:totNum}=recompute();
+    const total=brl(totNum);
+    const list = getQuotes();
+    const idx = list.findIndex(x=>String(x.id)===String(idForSave));
+    const base = idx>=0 ? list[idx] : {};
+    const payload = {
+      id: idForSave,
+      cliente, endereco, pagamento, observacoes: obs,
+      validadeDias: diasVal, descontoPct: pctDesc, locomocao: L(document.getElementById('locomocao').value),
+      itens: (itens||[]).map(it=>({nome:it.nome, preco:Number(it.preco)||0, qtd:Number(it.qtd)||1, obs:it.obs||''})),
+      total: total,
+      status: base.status || 'Pendente',
+      createdAt: keepCreatedFromBase ? (base.createdAt || new Date().toISOString()) : (base.createdAt || new Date().toISOString()),
+      updatedAt: new Date().toISOString()
+    };
+    return {payload, list, idx};
+  }
+
+  /** mostra/atualiza o badge de “Atualizado em …” **/
+  function showUpdatedBadge(iso){
+    updBadge.textContent = 'Atualizado em ' + dtBR(iso);
+    updBadge.classList.remove('hidden');
+  }
+
+  /** SALVAR sem gerar PDF **/
+  btnSaveOnly.onclick = async ()=>{
+    if(currentQuoteId==null){
+      alert('Este botão aparece apenas quando você está editando um orçamento existente.');
+      return;
+    }
+    const {payload, list, idx} = buildPayload(currentQuoteId, true);
+    if(idx>=0){ list[idx]=payload; } else { list.push(payload); }
+    setQuotes(list);
+    showUpdatedBadge(payload.updatedAt);
+
+    // também salva na nuvem
+    if (window.btSyncGeradorNuvem) {
+      try{ await window.btSyncGeradorNuvem({ ...payload, _id:String(currentQuoteId) }); }catch(e){ console.warn(e); }
+    }
+
+    btnSaveOnly.textContent='Salvo ✓';
+    setTimeout(()=>btnSaveOnly.textContent='Salvar orçamento', 1000);
+  };
+
+  /* ===== PDF — Layout 00014 ===== */
+  const loadImg=src=>new Promise((res,rej)=>{const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=rej; i.src=src;});
+
+  document.getElementById('btnPdf').onclick=async()=>{
+    if(!(window.jspdf && window.jspdf.jsPDF)){ window.print(); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'pt', format:'a4' });
+    const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
+    const M=CFG.margins,ACCENT=CFG.colors.accent,HDR_BG=CFG.colors.hdrBg,BOX_BORDER=CFG.colors.boxBorder,ROW_A=CFG.colors.rowA,ROW_B=CFG.colors.rowB,TABLE_BORDER=CFG.colors.tableBorder;
+
+    const cliente=(document.getElementById('cliente').value||'-').trim();
+    const endereco=(document.getElementById('endereco').value||'').trim();
+    const pagamento = (document.getElementById('pagamento').value==='__custom'
+                      ? (document.getElementById('pagamentoCustom').value||'')
+                      : document.getElementById('pagamento').value) || 'Crédito em até 2x sem juros ou PIX';
+    const obs = (document.getElementById('observacoes').value||'').trim();
+    const diasVal = Number(document.getElementById('validadeDias').value)||0;
+    const validadeAte = diasVal>0 ? dataBR(addDays(new Date(), diasVal)) : '';
+    const pctDesc = Number(document.getElementById('descontoPct').value)||0;
+
+    const {subtotal:subNum,desconto:descNum,loco:locNum,total:totNum}=recompute();
+    const subtotal=brl(subNum), desconto=brl(descNum), loco=brl(locNum), total=brl(totNum);
+    const linhas = itens.map(it=>({desc:it.nome,obs:it.obs,qtd:it.qtd,unit:brl(it.preco),tot:brl((it.preco||0)*(it.qtd||0))}));
+
+    const imgLogo=await loadImg(logoImg.src).catch(()=>null);
+    const logoRatio = imgLogo ? (imgLogo.naturalHeight||200)/(imgLogo.naturalWidth||800) : (200/800);
+
+    // ===== Cabeçalho =====
+    let y=M.top;
+    const lw=82, lh=lw*logoRatio, lx=M.left, ly=y;
+    if(imgLogo){ try{doc.addImage(imgLogo,'PNG',lx,ly,lw,lh);}catch(_){} }
+    doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(0);
+    const numero = getOrcamentoNumero();
+    doc.text(`ORÇAMENTO Nº ${numero}`, W/2, ly+24, {align:'center'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(40);
+    doc.text('bigmogi@hotmail.com', W-M.right, ly+8, {align:'right'});
+    doc.text('(11) 91577-9502 Whatsapp', W-M.right, ly+22, {align:'right'});
+    y = ly + Math.max(lh, 40) + 14;
+
+    // ===== Marca d’água (JPEG sem alpha – evita tarja) =====
+    if(imgLogo && CFG.wm.enabled){
+      const cw=imgLogo.naturalWidth||800, ch=imgLogo.naturalHeight||200;
+      const c=document.createElement('canvas'); c.width=cw; c.height=ch;
+      const ctx=c.getContext('2d');
+      ctx.fillStyle='#fff'; ctx.fillRect(0,0,cw,ch);
+      ctx.globalAlpha=CFG.wm.opacity;
+      ctx.drawImage(imgLogo,0,0,cw,ch);
+      const wmData=c.toDataURL('image/jpeg',0.85);
+      let wmW=W*CFG.wm.scale, wmH=wmW*logoRatio; const minH=H*0.30;
+      if(wmH<minH){wmH=minH; wmW=wmH/logoRatio; const capW=W*0.95; if(wmW>capW){wmW=capW; wmH=wmW*logoRatio;}}
+      const wmX=(W-wmW)/2; const wmY=(H-wmH)/2+CFG.wm.yOffset;
+      doc.addImage(wmData,'JPEG',wmX,wmY,wmW,wmH);
+    }
+
+    // ===== Identificação (altura dinâmica) =====
+    const startX=M.left, boxW=W-M.left-M.right;
+    doc.setDrawColor(...BOX_BORDER); doc.setLineWidth(1); doc.setFillColor(...HDR_BG);
+
+    const d=new Date(); const meses=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+    const dataStr=`Data: ${String(d.getDate()).padStart(2,'0')} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
+    const dateRight=`${dataStr}    Orçamento nº ${numero}`;
+
+    doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(20);
+
+    const clienteLines = doc.splitTextToSize(`Cliente: ${cliente}`, boxW-20);
+    const endLines = endereco ? doc.splitTextToSize(`Endereço: ${endereco}`, boxW-20) : [];
+    const contentLines = [...clienteLines, ...endLines];
+    const contentH = contentLines.length * 14 + 12;
+
+    const idH = Math.max(60, 24 + 14 + contentH);
+
+    doc.roundedRect(startX,y,boxW,24,6,6,'F');
+    doc.roundedRect(startX,y,boxW,idH,6,6,'D');
+
+    doc.text('Identificação', startX+8, y+16);
+
+    doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(25);
+    let cy = y + 24 + 16;
+    contentLines.forEach(line=>{ doc.text(line, startX+10, cy); cy += 14; });
+
+    doc.text(dateRight, startX+boxW-10, y+24+16, {align:'right'});
+
+    y += idH + 14;
+
+    // ===== Tabela =====
+    const colTot=90, colUnit=86, colQtd=42;
+    const colDesc=W-(M.left+M.right)-(colQtd+colUnit+colTot);
+    doc.setDrawColor(...CFG.colors.tableBorder); doc.setFillColor(...HDR_BG);
+    doc.rect(startX,y,colDesc,24,'F'); doc.rect(startX+colDesc,y,colQtd,24,'F'); doc.rect(startX+colDesc+colQtd,y,colUnit,24,'F'); doc.rect(startX+colDesc+colQtd+colUnit,y,colTot,24,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(0);
+    doc.text('Descrição', startX+6, y+16);
+    doc.text('Qtd', startX+colDesc+colQtd/2, y+16, {align:'center'});
+    doc.text('Unit.', startX+colDesc+colQtd+colUnit-6, y+16, {align:'right'});
+    doc.text('Total', startX+colDesc+colQtd+colUnit+colTot-6, y+16, {align:'right'});
+    y+=24;
+
+    doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(10);
+    const rowH=26;
+    linhas.forEach((it,idx)=>{
+      const bg=(idx%2?ROW_A:ROW_B);
+      doc.setFillColor(...bg);
+      const rh = Math.max(rowH, 18 + (it.obs?12:0));
+      doc.rect(startX,y,colDesc,rh,'F'); doc.rect(startX+colDesc,y,colQtd,rh,'F'); doc.rect(startX+colDesc+colQtd,y,colUnit,rh,'F'); doc.rect(startX+colDesc+colQtd+colUnit,y,colTot,rh,'F');
+      doc.text(it.desc||'', startX+6, y+14);
+      if(it.obs){ doc.setFont('helvetica','oblique'); doc.text(`Obs.: ${it.obs}`, startX+6, y+28); doc.setFont('helvetica','normal'); }
+      doc.text(String(it.qtd), startX+colDesc+colQtd/2, y+14, {align:'center'});
+      doc.text(it.unit, startX+colDesc+colQtd+colUnit-6, y+14, {align:'right'});
+      doc.text(it.tot, startX+colDesc+colQtd+colUnit+colTot-6, y+14, {align:'right'});
+      y+=rh;
+    });
+
+    // ===== Totais — wipe full-width + possível quebra =====
+    const bx = startX + colDesc + colQtd;
+    const totW = colUnit + colTot;
+    const row  = 22;
+    const needed = row*4 + 28;
+    if (y + needed > H - CFG.margins.bottom) {
+      doc.addPage();
+      y = CFG.margins.top;
+    }
+    doc.setFillColor(255,255,255);
+    doc.rect(startX, y - 4, (W - CFG.margins.left - CFG.margins.right), row*4 + 12, 'F');
+
+    doc.setTextColor(0);
+    doc.setFillColor(240,240,240);
+    doc.rect(bx, y, totW, row, 'F');
+    doc.text('Subtotal', bx + 8, y + 14);
+    doc.text(subtotal, bx + totW - 8, y + 14, { align:'right' });
+    y += row;
+
+    doc.rect(bx, y, totW, row, 'F');
+    doc.text(`Desconto (${pctDesc}%)`, bx + 8, y + 14);
+    doc.text(desconto, bx + totW - 8, y + 14, { align:'right' });
+    y += row;
+
+    doc.rect(bx, y, totW, row, 'F');
+    doc.text('Locomoção', bx + 8, y + 14);
+    doc.text(loco, bx + totW - 8, y + 14, { align:'right' });
+    y += row;
+
+    doc.setFillColor(197,230,204);
+    doc.setFont('helvetica','bold');
+    doc.rect(bx, y, totW, row, 'F');
+    doc.text('TOTAL', bx + 8, y + 14);
+    doc.text(total, bx + totW - 8, y + 14, { align:'right' });
+    y += row + 14;
+    doc.setFont('helvetica','normal');
+
+    // Blocos finais
+    const box=(title,text)=>{const maxW=W-CFG.margins.left-CFG.margins.right; const lines=doc.splitTextToSize(text,maxW-20); const h=24+12+lines.length*12+14;
+      doc.setDrawColor(...BOX_BORDER); doc.setLineWidth(0.9); doc.setFillColor(...HDR_BG);
+      doc.roundedRect(CFG.margins.left,y,maxW,h,6,6,'D'); doc.roundedRect(CFG.margins.left,y,maxW,24,6,6,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(20); doc.text(title,CFG.margins.left+8,y+16);
+      doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(20); let cy2=y+24+14; lines.forEach(t=>{doc.text(t,CFG.margins.left+10,cy2); cy2+=12;}); y+=h+12;};
+    box('Condições de Pagamento', pagamento);
+    if(diasVal>0) box('Validade do Orçamento', `Válido por ${diasVal} dia(s), até ${validadeAte}.`);
+    if(obs) box('Observações', obs);
+
+    // Rodapé
+    doc.setDrawColor(...ACCENT); doc.setLineWidth(1.2);
+    doc.line(CFG.margins.left, H-CFG.margins.bottom, W-CFG.margins.right, H-CFG.margins.bottom);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(40);
+    doc.text(`Big Trato Higienização • Mogi das Cruzes - SP • v${CFG.version} • WM:${CFG.wm.enabled?'on':'off'}/${CFG.wm.opacity}/${CFG.wm.scale}/${CFG.wm.yOffset}  Orçamento nº ${numero}`, CFG.margins.left, H-CFG.margins.bottom+16);
+
+    /* ===== Enviar/Atualizar no Painel (status: Pendente) + updatedAt ===== */
+    try {
+      const idNum = Number(String(numero||'').replace(/^0+/,'')) || Number(numero);
+      const { payload, list, idx } = buildPayload(idNum, true);
+      if (idx >= 0) { list[idx] = payload; } else { list.push(payload); }
+      setQuotes(list);
+      showUpdatedBadge(payload.updatedAt);
+
+      // <<< salva também na nuvem (Firestore)
+      if (window.btSyncGeradorNuvem) {
+        await window.btSyncGeradorNuvem({ ...payload, _id:String(idNum) });
+      }
+    } catch (_) { /* silencioso */ }
+
+    doc.save(`Orcamento_${numero}_${cliente||'BigTrato'}.pdf`);
+    atualizarValidadePreview();
+  }; /* <-- FECHAMENTO da função do botão PDF (corrigido) */
+</script>
+
+<!-- === Firebase sync (módulo) === -->
+<script type="module">
+  import { Quotes } from './bt_firebase.js';
+
+  // Função global para sincronizar com a nuvem (Firestore)
+  window.btSyncGeradorNuvem = async function(payload){
+    try {
+      await Quotes.save(payload);
+      console.log('[Nuvem] Orçamento salvo no Firestore:', payload?._id || payload?.id);
+    } catch (e) {
+      console.warn('[Nuvem] Falha ao salvar no Firestore:', e);
+    }
+  };
+</script>
+
+</body>
+</html>

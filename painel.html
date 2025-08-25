@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Big Trato • Painel (CRM)</title>
+<style>
+  :root{--bg:#0f1115;--card:#121822;--line:#1d2736;--muted:#9fb0c7;--accent:#00ff88}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:#e8f0ff;font:14px/1.45 Arial,system-ui}
+  header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .homebtn, .primary{border:2px solid var(--accent);background:transparent;color:var(--accent);padding:8px 12px;border-radius:10px;font-weight:700;cursor:pointer}
+  .homebtn:hover,.primary:hover{background:var(--accent);color:#111}
+  .wrap{max-width:1100px;margin:20px auto;padding:0 16px}
+  .bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  input,select{padding:10px;border-radius:10px;border:1px solid var(--line);background:#0e1420;color:#e8f0ff}
+  table{width:100%;border-collapse:collapse;background:#111827;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  th,td{padding:10px;border-bottom:1px solid var(--line)}
+  th{background:#0d1522;text-align:left}
+  tr:nth-child(even) td{background:#111a28}
+  .actions button{margin-right:6px}
+  .status{padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:#0e1420;color:#cfe}
+  .muted{color:var(--muted)}
+  .diag{margin:10px 0; padding:10px; border:1px dashed var(--line); border-radius:10px; background:#0e1420; color:#cfe; font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <strong>CRM — Orçamentos</strong>
+  <div>
+    <button class="homebtn" onclick="location.href='home.html'">Home</button>
+    <button class="primary" id="btnExport">Exportar dados</button>
+    <input id="importFile" type="file" accept="application/json" style="display:none" />
+    <button class="primary" id="btnImport">Importar/Restaurar</button>
+    <button class="primary" id="btnPing">Testar webhook</button>
+    <button class="primary" id="btnNovo">Novo Orçamento (gerador)</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="diag" id="diag">—</div>
+
+  <div class="bar">
+    <input id="q" placeholder="Buscar por cliente..." />
+    <select id="fStatus">
+      <option value="">Todos os status</option>
+      <option>Pendente</option>
+      <option>Aprovado</option>
+      <option>Negado</option>
+      <option>Serviço Concluído</option>
+    </select>
+  </div>
+
+  <table id="tbl">
+    <thead>
+      <tr>
+        <th>#</th><th>Cliente</th><th>Criado em</th><th>Total</th><th>Status</th><th>Ações</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+  /* ====== STORAGE ====== */
+  const LS_QUOTES='bt_quotes';
+  function getQuotes(){ try{return JSON.parse(localStorage.getItem(LS_QUOTES)||'[]')}catch{return []} }
+  function setQuotes(arr){ localStorage.setItem(LS_QUOTES, JSON.stringify(arr)); }
+
+  /* ===== GCAL CONFIG ===== */
+  const GCAL_DEFAULT_CAL_ID = '13832b5abe1ca99a24e0a4c71eb5ce88c4a4696518557bf4d92a1458e5fa196f@group.calendar.google.com';
+  function getWebhook(){ return (localStorage.getItem('bt_gcal_webhook')||'').trim(); }
+
+  /* ===== Exportar / Importar ===== */
+  document.getElementById('btnExport').onclick=()=>{
+    const data = JSON.stringify(getQuotes(), null, 2);
+    const blob = new Blob([data], {type:'application/json'});
+    const a = document.createElement('a');
+    const ts = new Date();
+    const two=n=>String(n).padStart(2,'0');
+    a.href = URL.createObjectURL(blob);
+    a.download = `bt_quotes-${ts.getFullYear()}${two(ts.getMonth()+1)}${two(ts.getDate())}-${two(ts.getHours())}${two(ts.getMinutes())}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+  document.getElementById('btnImport').onclick=()=>document.getElementById('importFile').click();
+  document.getElementById('importFile').addEventListener('change', async (e)=>{
+    const f = e.target.files?.[0]; if(!f) return;
+    const fr = new FileReader();
+    fr.onload=()=>{
+      try{
+        const parsed = JSON.parse(String(fr.result||'[]'));
+        if(!Array.isArray(parsed)) throw new Error('JSON não é um array');
+        setQuotes(parsed);
+        alert(`Importado com sucesso: ${parsed.length} registro(s).`);
+        render();
+      }catch(err){ alert('Falha ao importar: '+err.message); }
+      e.target.value='';
+    };
+    fr.readAsText(f,'utf-8');
+  });
+
+  /* ====== ELEMENTOS ====== */
+  const tbody=document.querySelector('#tbl tbody');
+  const qInput=document.getElementById('q');
+  const fStatus=document.getElementById('fStatus');
+  const diagEl=document.getElementById('diag');
+
+  qInput.addEventListener('input',render);
+  fStatus.addEventListener('change',render);
+
+  function updateDiag(){
+    const total = getQuotes().length;
+    const wh = getWebhook();
+    const tail = wh ? '…'+wh.slice(-28) : '—';
+    diagEl.textContent = `Itens no painel: ${total} • Webhook: ${tail}`;
+  }
+
+  document.getElementById('btnPing').onclick = async ()=>{
+    const url = getWebhook();
+    if(!url){ alert('Webhook não configurado.'); return; }
+    try{
+      const res = await fetch(url+'?echo=1',{mode:'cors'});
+      const txt = await res.text();
+      alert('Webhook respondeu ('+res.status+'): '+ txt.slice(0,180));
+    }catch(e){ alert('Falha ao contactar o webhook: '+ e.message); }
+  };
+
+  /* ====== RENDER ====== */
+  function render(){
+    updateDiag();
+    const list=getQuotes().slice().reverse();
+    const term=(qInput.value||'').toLowerCase().trim();
+    const st=(fStatus.value||'').trim();
+
+    const rows=list.filter(q=>{
+      const okTerm = !term || (q.cliente||'').toLowerCase().includes(term);
+      const okStatus = !st || (q.status===st);
+      return okTerm && okStatus;
+    });
+
+    tbody.innerHTML='';
+    if(rows.length===0){
+      const tr=document.createElement('tr');
+      const td=document.createElement('td');
+      td.colSpan=6;
+      td.className='muted';
+      td.style.padding='20px';
+      td.textContent='Nenhum orçamento nesta origem.';
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+      return;
+    }
+
+    rows.forEach(q=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`
+        <td>${q.id ?? ''}</td>
+        <td>${q.cliente||'-'}</td>
+        <td>${q.createdAt? new Date(q.createdAt).toLocaleString('pt-BR') : '-'}</td>
+        <td>${q.total||'-'}</td>
+        <td>
+          <select class="status">
+            <option ${q.status==='Pendente'?'selected':''}>Pendente</option>
+            <option ${q.status==='Aprovado'?'selected':''}>Aprovado</option>
+            <option ${q.status==='Negado'?'selected':''}>Negado</option>
+            <option ${q.status==='Serviço Concluído'?'selected':''}>Serviço Concluído</option>
+          </select>
+        </td>
+        <td class="actions">
+          <button class="primary editar">Editar no gerador</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  document.getElementById('btnNovo').onclick=()=>{
+    try{ localStorage.removeItem('bt_load_quote'); }catch{}
+    location.href = 'Gerador de orçamentos.html';
+  };
+
+  /* START seguro */
+  window.addEventListener('DOMContentLoaded', ()=>{
+    if (window.btLoadQuotes) {
+      window.btLoadQuotes();
+    } else {
+      render();
+    }
+  });
+</script>
+
+<!-- Integração com Firestore -->
+<script type="module">
+  import { Quotes } from './bt_firebase.js';
+
+  async function getQuotesFromCloud() {
+    try {
+      const list = await Quotes.list();
+      localStorage.setItem('bt_quotes', JSON.stringify(list));
+      if (window.render) window.render();
+    } catch(e) {
+      console.warn('Falha ao ler quotes da nuvem; usando localStorage:', e);
+      if (window.render) window.render();
+    }
+  }
+  window.btLoadQuotes = getQuotesFromCloud;
+</script>
+</body>
+</html>

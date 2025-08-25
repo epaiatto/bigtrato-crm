@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Big Trato • Cadastro de Clientes</title>
+<style>
+  :root{--bg:#0f1115;--card:#121822;--line:#1d2736;--muted:#9fb0c7;--accent:#00ff88}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:#e8f0ff;font:14px/1.45 Arial,system-ui}
+  header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .homebtn,.primary{border:2px solid var(--accent);background:transparent;color:var(--accent);padding:8px 12px;border-radius:10px;font-weight:700;cursor:pointer}
+  .homebtn:hover,.primary:hover{background:var(--accent);color:#111}
+
+  .wrap{max-width:1360px;margin:20px auto;padding:0 16px}
+
+  .bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  input,select,textarea{padding:10px;border-radius:10px;border:1px solid var(--line);background:#0e1420;color:#e8f0ff}
+
+  /* tabela */
+  table{width:100%;border-collapse:collapse;background:#111827;border:1px solid var(--line);border-radius:12px;overflow:hidden;table-layout:auto}
+  th,td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;text-indent:0}
+  th{background:#0d1522;text-align:left}
+  tr:nth-child(even) td{background:#111a28}
+
+  .clientName{display:inline-block;white-space:normal;line-height:1.25}
+  .nowrap{white-space:nowrap}
+  .addr{white-space:normal;word-break:break-word;hyphens:auto;text-indent:0}
+
+  /* Ações em linha (sem quebrar) */
+  td.actions{white-space:nowrap}
+  td.actions{display:flex;gap:10px;align-items:flex-start;justify-content:flex-end}
+
+  /* botão excluir (esquerda, igual CRM) */
+  .delCell{width:34px}
+  .rowDel{
+    width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;
+    border:1px solid var(--line);border-radius:999px;background:#0e1420;color:#ff8f8f;
+    line-height:1;font-weight:900;cursor:pointer;user-select:none
+  }
+  .rowDel:hover{background:#ff5c5c;color:#111;border-color:#ff5c5c;box-shadow:0 0 8px #ff5c5c55}
+
+  /* modal */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:16px;z-index:20}
+  .panel{background:#0f1522;border:1px solid var(--line);border-radius:12px;padding:16px;max-width:680px;width:100%}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .grid-1{display:grid;grid-template-columns:1fr;gap:10px}
+  .right{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
+
+  a.tel,a.mail{color:#8ddcff;text-decoration:underline}
+  small.muted{color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <strong>Cadastro de Clientes</strong>
+  <div>
+    <button class="homebtn" onclick="location.href='home.html'">Home</button>
+    <button class="primary" id="btnNovo">Novo cliente</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="bar">
+    <input id="q" placeholder="Buscar por nome, telefone, e-mail..." style="min-width:260px"/>
+    <select id="fOrigem">
+      <option value="">Todas as origens</option>
+      <option>WhatsApp</option>
+      <option>Instagram</option>
+      <option>Indicação</option>
+      <option>Site</option>
+      <option>Outro</option>
+    </select>
+  </div>
+
+  <table id="tbl">
+    <!-- Colunas dimensionadas: Endereço largo e Ações com espaço -->
+    <colgroup>
+      <col style="width:34px">      <!-- X -->
+      <col style="width:60px">      <!-- ID -->
+      <col style="width:18%">       <!-- Cliente -->
+      <col style="width:150px">     <!-- Telefone -->
+      <col style="width:200px">     <!-- E-mail -->
+      <col style="width:45%">       <!-- Endereço (BEM largo) -->
+      <col style="width:120px">     <!-- Origem -->
+      <col style="width:170px">     <!-- Criado -->
+      <col style="width:260px">     <!-- Ações (mais largo) -->
+    </colgroup>
+    <thead>
+      <tr>
+        <th class="delCell"></th>
+        <th>#</th>
+        <th>Cliente</th>
+        <th>Telefone</th>
+        <th>E-mail</th>
+        <th>Endereço</th>
+        <th>Origem</th>
+        <th>Criado</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- Modal de edição -->
+<div class="modal" id="modal">
+  <div class="panel">
+    <h3 style="margin:0 0 10px"><span id="ttl">Novo cliente</span></h3>
+    <div class="grid">
+      <div>
+        <label>Nome</label>
+        <input id="fNome" />
+      </div>
+      <div>
+        <label>Origem</label>
+        <select id="fOrig">
+          <option>WhatsApp</option><option>Instagram</option><option>Indicação</option><option>Site</option><option>Outro</option>
+        </select>
+      </div>
+      <div>
+        <label>Telefone (com DDD)</label>
+        <input id="fTel" placeholder="(11) 91234-5678" />
+      </div>
+      <div>
+        <label>E-mail</label>
+        <input id="fMail" placeholder="exemplo@email.com" />
+      </div>
+    </div>
+    <div class="grid-1" style="margin-top:10px">
+      <div>
+        <label>Endereço</label>
+        <textarea id="fEnd" rows="2" style="width:100%"></textarea>
+      </div>
+      <div>
+        <label>Observações</label>
+        <textarea id="fObs" rows="2" style="width:100%"></textarea>
+      </div>
+    </div>
+    <div class="right">
+      <button class="homebtn" id="btnClose" style="border-style:dashed">Fechar</button>
+      <button class="primary" id="btnSave">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== storage / helpers da UI ===== */
+const LS='bt_clients';
+const SEQ='bt_cli_seq';
+const PREFS_GER='bt_gerador_path';
+
+const $ = sel => document.querySelector(sel);
+const tbody = $('#tbl tbody');
+const q = $('#q'), fOrigem = $('#fOrigem');
+
+function loadLocal(){ try{return JSON.parse(localStorage.getItem(LS)||'[]')}catch{return []} }
+function saveLocal(arr){ localStorage.setItem(LS, JSON.stringify(arr)); }
+function nextId(){ let n=Number(localStorage.getItem(SEQ)||0)+1; localStorage.setItem(SEQ,String(n)); return n; }
+
+function getId(c){ return c?.id ?? c?._id ?? ''; }  // unifica id local e da nuvem
+
+/* se já veio da nuvem, usa __CLIENTES; senão, usa localStorage */
+function load(){
+  try{
+    if (Array.isArray(window.__CLIENTES) && window.__CLIENTES.length) return window.__CLIENTES;
+    return loadLocal();
+  }catch{return []}
+}
+
+function telMask(s){ s=String(s||'').replace(/\D/g,''); if(!s) return '';
+  if(s.length<=10){ return s.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3').trim().replace(/-$/,''); }
+  return s.replace(/(\d{2})(\d{5})(\d{0,4})/,'($1) $2-$3').trim().replace(/-$/,'');
+}
+function fmtTelLink(s){ const d=String(s||'').replace(/\D/g,''); return d?`<a class="tel" href="tel:+55${d}">${telMask(s)}</a>`:'-'; }
+function fmtMailLink(s){ s=String(s||'').trim(); return s?`<a class="mail" href="mailto:${s}">${s}</a>`:'-'; }
+function fmtDate(iso){ try{ return new Date(iso).toLocaleString('pt-BR'); }catch{ return '-'; } }
+
+/* render */
+function render(){
+  const list = load().slice().reverse();
+  const term = (q.value||'').toLowerCase().trim();
+  const org  = (fOrigem.value||'').trim();
+
+  const rows = list.filter(c=>{
+    const okTerm = !term ||
+      (c.nome||'').toLowerCase().includes(term) ||
+      (String(c.tel||'').toLowerCase().includes(term))  ||
+      (String(c.mail||'').toLowerCase().includes(term));
+    const okOrg = !org || (c.origem===org);
+    return okTerm && okOrg;
+  });
+
+  tbody.innerHTML='';
+  rows.forEach(c=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="delCell"><button class="rowDel" title="Excluir cadastro">×</button></td>
+      <td>${getId(c)}</td>
+      <td><span class="clientName">${c.nome||'-'}</span></td>
+      <td class="nowrap">${fmtTelLink(c.tel)}</td>
+      <td class="nowrap">${fmtMailLink(c.mail)}</td>
+      <td class="addr">${(c.endereco||'-').replace(/\n/g,'<br>')}</td>
+      <td class="nowrap">${c.origem||'-'}</td>
+      <td class="nowrap">${fmtDate(c.createdAt)}</td>
+      <td class="actions">
+        <button class="primary btnEdit">Editar</button>
+        <button class="primary btnQuote">Gerar orçamento</button>
+      </td>
+    `;
+
+    tr.querySelector('.rowDel').onclick=async ()=>{
+      const id = getId(c);
+      if(confirm(`Excluir o cadastro #${id} — ${c.nome||'-'}?`)){
+        // remove local
+        const all=loadLocal(); const i=all.findIndex(x=>String(getId(x))===String(id));
+        if(i>=0){ all.splice(i,1); saveLocal(all); }
+        // remove nuvem (se disponível)
+        if (window.btExcluirClienteNaNuvem) {
+          try{ await window.btExcluirClienteNaNuvem(id); }catch(e){ console.warn('Falha ao excluir na nuvem:', e); }
+        }
+        // tira da memória e re-renderiza
+        if (Array.isArray(window.__CLIENTES))
+          window.__CLIENTES = window.__CLIENTES.filter(x=>String(getId(x))!==String(id));
+        render();
+      }
+    };
+
+    tr.querySelector('.btnEdit').onclick=()=>openModal(c);
+    tr.querySelector('.btnQuote').onclick=()=>toGerador(c);
+
+    tbody.appendChild(tr);
+  });
+}
+q.addEventListener('input',render);
+fOrigem.addEventListener('change',render);
+
+/* modal */
+const modal = $('#modal');
+const fNome=$('#fNome'), fTel=$('#fTel'), fMail=$('#fMail'), fEnd=$('#fEnd'), fObs=$('#fObs'), fOrig=$('#fOrig');
+let editingId = null;
+
+function openModal(c=null){
+  editingId = c? getId(c) : null;
+  $('#ttl').textContent = c? `Editar cliente #${getId(c)}` : 'Novo cliente';
+  fNome.value=c?.nome||''; fTel.value=telMask(c?.tel||''); fMail.value=c?.mail||'';
+  fEnd.value=c?.endereco||''; fObs.value=c?.obs||''; fOrig.value=c?.origem||'WhatsApp';
+  modal.style.display='flex';
+}
+$('#btnNovo').onclick=()=>openModal();
+$('#btnClose').onclick=()=>modal.style.display='none';
+
+$('#btnSave').onclick=async ()=>{
+  const nome=(fNome.value||'').trim();
+  if(!nome){ alert('Informe o nome.'); fNome.focus(); return; }
+  const tel=fTel.value; const mail=(fMail.value||'').trim(); const end=fEnd.value; const obs=fObs.value; const origem=fOrig.value;
+
+  const all=loadLocal();
+  let id = editingId;
+
+  if(editingId){
+    const i=all.findIndex(x=>String(getId(x))===String(editingId));
+    if(i>=0){
+      all[i]={...all[i], id:editingId, nome, tel, mail, endereco:end, obs, origem};
+    }
+  }else{
+    id = nextId();
+    all.push({id, nome, tel, mail, endereco:end, obs, origem, createdAt:new Date().toISOString()});
+  }
+  saveLocal(all);
+
+  // salva na nuvem também
+  if (window.btSalvarClienteNaNuvem) {
+    try{
+      await window.btSalvarClienteNaNuvem({ id, nome, tel, mail, endereco:end, obs, origem, createdAt:new Date().toISOString() });
+    }catch(e){ console.warn('Falha ao salvar na nuvem (vai ficar no localStorage):', e); }
+  }
+
+  // atualiza a memória do render
+  if (!Array.isArray(window.__CLIENTES)) window.__CLIENTES = [];
+  window.__CLIENTES = all.slice(0);
+
+  modal.style.display='none';
+  render();
+};
+
+/* ir para o gerador com prefill */
+function winPathToFileURL(p){const m=/^[A-Za-z]:[\\/]/.exec(p); if(!m) return null; let d=p[0].toUpperCase(); let r=p.slice(2).replace(/\\/g,'/'); if(!r.startsWith('/')) r='/'+r; r=r.split('/').map(s=>encodeURIComponent(s)).join('/'); return `file:///${d}:${r}`;}
+function resolveGeradorURL(){const raw=(localStorage.getItem(PREFS_GER)||'Gerador de orçamentos.html').trim(); if(/^https?:\/\//i.test(raw)||/^file:\/\//i.test(raw)) return raw; const maybe=winPathToFileURL(raw); if(maybe) return maybe; try{return new URL(raw, location.href).toString();}catch{return raw;}}
+function toGerador(c){
+  try{
+    localStorage.setItem('bt_load_quote', JSON.stringify({
+      cliente: c?.nome||'',
+      endereco: c?.endereco||'',
+      observacoes: c?.obs||'',
+      itens: []
+    }));
+  }catch{}
+  location.href = resolveGeradorURL();
+}
+
+/* primeiro render (caso ainda não tenha vindo da nuvem) */
+render();
+
+/* exporta um hook opcional pra atualização externa */
+window.renderClientes = function(list){
+  window.__CLIENTES = (Array.isArray(list)? list : []);
+  // espelha para uso offline
+  saveLocal(window.__CLIENTES.map(c=>({ id:getId(c), ...c })));
+  render();
+};
+</script>
+
+<!-- Integração com a nuvem -->
+<script type="module">
+  import { Clients } from './bt_firebase.js';
+
+  // Carrega da nuvem ao abrir a página
+  (async function loadClients(){
+    try{
+      const list = await Clients.list();
+      window.renderClientes(list);
+    }catch(e){
+      console.warn('Falha ao listar clientes da nuvem, ficando só no local:', e);
+    }
+  })();
+
+  // Salvar/Excluir expostos para o script acima
+  window.btSalvarClienteNaNuvem = async function(cli){
+    const id = await Clients.save(cli);
+    return id;
+  };
+  window.btExcluirClienteNaNuvem = async function(id){
+    await Clients.remove(id);
+  };
+</script>
+
+</body>
+</html>
