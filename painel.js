@@ -1,108 +1,106 @@
-/* ===== STORAGE ===== */
-const LS_QUOTES='bt_quotes';
-function getQuotes(){ try{return JSON.parse(localStorage.getItem(LS_QUOTES)||'[]')}catch{return []} }
-function setQuotes(arr){ localStorage.setItem(LS_QUOTES, JSON.stringify(arr)); }
+// painel.js
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { 
+  getFirestore, collection, getDocs, doc, updateDoc, deleteDoc 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* ===== ELEMENTOS ===== */
-const tbody=document.querySelector('#tbl tbody');
-const qInput=document.getElementById('q');
-const fStatus=document.getElementById('fStatus');
+// ===== CONFIG FIREBASE =====
+const firebaseConfig = {
+  apiKey: "SUA_KEY",
+  authDomain: "SEU_PROJETO.firebaseapp.com",
+  projectId: "SEU_PROJETO",
+  storageBucket: "SEU_PROJETO.appspot.com",
+  messagingSenderId: "XXX",
+  appId: "XXX"
+};
 
-/* ===== RENDER ===== */
-function render(){
-  const list=getQuotes().slice().reverse();
-  const term=(qInput.value||'').toLowerCase().trim();
-  const st=(fStatus.value||'').trim();
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-  const rows=list.filter(q=>{
-    const okTerm = !term || (q.cliente||'').toLowerCase().includes(term);
-    const okStatus = !st || (q.status===st);
-    return okTerm && okStatus;
+const tbody = document.getElementById("tbody");
+const search = document.getElementById("search");
+const statusFilter = document.getElementById("statusFilter");
+
+// ====== CARREGAR ORÇAMENTOS ======
+async function carregar() {
+  tbody.innerHTML = "";
+  const snap = await getDocs(collection(db, "quotes"));
+  let rows = [];
+  snap.forEach(docSnap => {
+    rows.push({ ...docSnap.data(), _id: docSnap.id });
   });
 
-  tbody.innerHTML='';
-  if(rows.length===0){
-    const tr=document.createElement('tr');
-    const td=document.createElement('td');
-    td.colSpan=6;
-    td.className='muted';
-    td.style.padding='20px';
-    td.textContent='Nenhum orçamento encontrado.';
-    tr.appendChild(td);
-    tbody.appendChild(tr);
-    return;
-  }
+  // filtros
+  const termo = search.value.toLowerCase();
+  const filtro = statusFilter.value;
+  rows = rows.filter(r =>
+    (!termo || (r.cliente || "").toLowerCase().includes(termo)) &&
+    (!filtro || r.status === filtro)
+  );
 
-  rows.forEach(q=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`
-      <td>${q.id ?? ''}</td>
-      <td>${q.cliente||'-'}</td>
-      <td>${q.createdAt? new Date(q.createdAt).toLocaleString('pt-BR') : '-'}</td>
-      <td>${q.total||'-'}</td>
+  rows.forEach(q => {
+    const tr = document.createElement("tr");
+
+    // Tratar data (string ISO ou Timestamp)
+    let dataFormatada = "-";
+    if (q.createdAt) {
+      try {
+        const d = new Date(q.createdAt);
+        if (!isNaN(d.getTime())) {
+          dataFormatada = d.toLocaleString("pt-BR");
+        }
+      } catch (e) {
+        dataFormatada = q.createdAt; // fallback
+      }
+    }
+
+    tr.innerHTML = `
+      <td>${q.id ?? ""}</td>
+      <td>${q.cliente || "-"}</td>
+      <td>${dataFormatada}</td>
+      <td>R$ ${q.total ?? "-"}</td>
       <td>
         <select class="status">
-          <option ${q.status==='Pendente'?'selected':''}>Pendente</option>
-          <option ${q.status==='Aprovado'?'selected':''}>Aprovado</option>
-          <option ${q.status==='Negado'?'selected':''}>Negado</option>
-          <option ${q.status==='Serviço Concluído'?'selected':''}>Serviço Concluído</option>
+          <option ${q.status === "Pendente" ? "selected" : ""}>Pendente</option>
+          <option ${q.status === "Aprovado" ? "selected" : ""}>Aprovado</option>
+          <option ${q.status === "Negado" ? "selected" : ""}>Negado</option>
+          <option ${q.status === "Serviço Concluído" ? "selected" : ""}>Serviço Concluído</option>
         </select>
       </td>
       <td class="actions">
-        <button class="primary editar">Editar no gerador</button>
-        <button class="delete">×</button>
+        <button class="editar">Editar no gerador</button>
+        <button class="delete">x</button>
       </td>
     `;
 
-    /* === Delete === */
-    tr.querySelector('.delete').onclick=()=>{
-      if(confirm(`Excluir orçamento #${q.id} de "${q.cliente}"?`)){
-        const all=getQuotes();
-        const i=all.findIndex(x=>String(x.id)===String(q.id));
-        if(i>=0){ all.splice(i,1); setQuotes(all); }
-        render();
+    // alterar status
+    tr.querySelector(".status").addEventListener("change", async (e) => {
+      try {
+        await updateDoc(doc(db, "quotes", q._id), { status: e.target.value });
+        console.log("Status atualizado:", e.target.value);
+      } catch (err) {
+        alert("Erro ao atualizar status");
       }
-    };
-
-    /* === Status === */
-    const sel=tr.querySelector('.status');
-    sel.addEventListener('change',()=>{
-      q.status=sel.value;
-      const all=getQuotes();
-      const i=all.findIndex(x=>String(x.id)===String(q.id));
-      if(i>=0){ all[i]=q; setQuotes(all); }
-      render();
     });
 
-    /* === Editar === */
-    tr.querySelector('.editar').onclick=()=>editarNoGerador(q);
+    // editar
+    tr.querySelector(".editar").addEventListener("click", () => {
+      localStorage.setItem("bt_load_quote", JSON.stringify(q));
+      window.location.href = "Gerador de orçamentos.html";
+    });
+
+    // deletar
+    tr.querySelector(".delete").addEventListener("click", async () => {
+      if (confirm("Excluir este orçamento?")) {
+        await deleteDoc(doc(db, "quotes", q._id));
+        carregar();
+      }
+    });
 
     tbody.appendChild(tr);
   });
 }
 
-qInput.addEventListener('input',render);
-fStatus.addEventListener('change',render);
-
-/* ===== Navegação para o gerador ===== */
-function winPathToFileURL(p){ 
-  const m=/^[A-Za-z]:[\\/]/.exec(p); 
-  if(!m) return null; 
-  let d=p[0].toUpperCase(); 
-  let r=p.slice(2).replace(/\\/g,'/'); 
-  if(!r.startsWith('/')) r='/'+r; 
-  r=r.split('/').map(s=>encodeURIComponent(s)).join('/'); 
-  return `file:///${d}:${r}`;
-}
-function resolveGeradorURL(){
-  const PREFS_GER='bt_gerador_path';
-  const raw=(localStorage.getItem(PREFS_GER)||'Gerador de orçamentos.html').trim();
-  if(/^https?:\/\//i.test(raw) || /^file:\/\//i.test(raw)) return raw;
-  const maybe=winPathToFileURL(raw); if(maybe) return maybe;
-  try{ return new URL(raw, location.href).toString(); }catch{ return raw; }
-}
-function editarNoGerador(q){ try{ localStorage.setItem('bt_load_quote', JSON.stringify(q)); }catch{} location.href = resolveGeradorURL(); }
-document.getElementById('btnNovo').onclick=()=>{ try{ localStorage.removeItem('bt_load_quote'); }catch{} location.href = resolveGeradorURL(); };
-
-/* ===== START ===== */
-render();
+search.addEventListener("input", carregar);
+statusFilter.addEventListener("change", carregar);
+carregar();
