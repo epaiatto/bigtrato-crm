@@ -10,26 +10,33 @@
       background: #0f1115;
       color: #e8f0ff;
       text-align: center;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
     }
     header {
       padding: 20px;
       border-bottom: 1px solid #1d2736;
+      text-align: left;
     }
     header h1 {
       margin: 0;
       font-size: 16px;
       color: #9fb0c7;
-      text-align: left;
     }
-    .logo {
-      margin: 40px auto 20px;
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center; /* centraliza logo + título na tela */
+      padding: 40px 20px;
     }
     .logo img {
-      max-width: 800px;   /* força logo grande */
+      max-width: 500px;   /* controla tamanho máximo */
       width: 100%;
       height: auto;
-      display: block;
-      margin: 0 auto;
+      margin-bottom: 20px;
     }
     h2 {
       font-size: 28px;
@@ -71,10 +78,10 @@
       color: #0f1115;
     }
     footer {
-      margin-top: 60px;
       padding: 20px;
       font-size: 12px;
       color: #9fb0c7;
+      border-top: 1px solid #1d2736;
     }
   </style>
 </head>
@@ -83,24 +90,26 @@
     <h1>Big Trato • Home</h1>
   </header>
 
-  <div class="logo">
-    <img src="logo-bt.png" alt="Big Trato">
-  </div>
-
-  <h2>Big Trato • Sistema CRM + Financeiro</h2>
-
-  <div class="grid">
-    <div class="card">
-      <h3>EMPRESA</h3>
-      <a class="btn">Produtos</a>
-      <a class="btn">Serviços</a>
-      <a class="btn" href="financas.html">Finanças</a>
+  <div class="content">
+    <div class="logo">
+      <img src="logo-bt.png" alt="Big Trato">
     </div>
-    <div class="card">
-      <h3>CLIENTE</h3>
-      <a class="btn" href="Cadastro.html">Cadastro</a>
-      <a class="btn" href="painel.html">CRM</a>
-      <a class="btn" href="Gerador de orçamentos.html">Gerar Orçamento</a>
+
+    <h2>Big Trato • Sistema CRM + Financeiro</h2>
+
+    <div class="grid">
+      <div class="card">
+        <h3>EMPRESA</h3>
+        <a class="btn">Produtos</a>
+        <a class="btn">Serviços</a>
+        <a class="btn" href="financas.html">Finanças</a>
+      </div>
+      <div class="card">
+        <h3>CLIENTE</h3>
+        <a class="btn" href="Cadastro.html">Cadastro</a>
+        <a class="btn" href="painel.html">CRM</a>
+        <a class="btn" href="Gerador de orçamentos.html">Gerar Orçamento</a>
+      </div>
     </div>
   </div>
 
