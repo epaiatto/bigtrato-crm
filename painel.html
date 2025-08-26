@@ -97,7 +97,12 @@
         tr.innerHTML=`
           <td>${q.id ?? ''}</td>
           <td>${q.cliente||'-'}</td>
-          <td>${q.createdAt? new Date(q.createdAt).toLocaleString('pt-BR'):'-'}</td>
+        <td>${
+  q.createdAt 
+    ? new Date((q.createdAt.seconds || q.createdAt) * 1000).toLocaleString('pt-BR')
+    : '-'
+}</td>
+
           <td>R$ ${q.total||'-'}</td>
           <td>
             <select class="status">
@@ -145,3 +150,4 @@
   </script>
 </body>
 </html>
+
