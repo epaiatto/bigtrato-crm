@@ -1,34 +1,106 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta charset="UTF-8">
   <title>Big Trato • Home</title>
   <style>
-    :root{--bg:#0f1115;--card:#121822;--line:#1d2736;--accent:#00ff88}
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:#e8f0ff;font:16px/1.5 Arial,system-ui;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;text-align:center}
-    header{margin-bottom:30px}
-    header img{max-height:120px;max-width:280px}
-    h1{margin:12px 0;color:var(--accent)}
-    nav{display:flex;flex-wrap:wrap;gap:14px;justify-content:center}
-    .btn{border:2px solid var(--accent);background:transparent;color:var(--accent);padding:12px 20px;border-radius:12px;font-weight:600;cursor:pointer;transition:0.2s}
-    .btn:hover{background:rgba(0,255,136,.15)}
-    footer{margin-top:40px;font-size:13px;color:#9fb0c7}
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0f1115;
+      color: #e8f0ff;
+      text-align: center;
+    }
+    header {
+      padding: 20px;
+      border-bottom: 1px solid #1d2736;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 16px;
+      color: #9fb0c7;
+      text-align: left;
+    }
+    .logo {
+      margin: 40px auto 20px;
+    }
+    .logo img {
+      max-width: 600px; /* força o logo a ficar grande */
+      width: 80%;
+      height: auto;
+    }
+    h2 {
+      font-size: 28px;
+      color: #00ff88;
+      margin-bottom: 40px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    .card {
+      background: #121822;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 12px rgba(0, 255, 136, 0.2);
+    }
+    .card h3 {
+      margin-top: 0;
+      color: #9fb0c7;
+      margin-bottom: 20px;
+    }
+    .btn {
+      display: block;
+      margin: 10px auto;
+      padding: 14px;
+      border: 2px solid #00ff88;
+      border-radius: 8px;
+      background: transparent;
+      color: #00ff88;
+      font-weight: bold;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn:hover {
+      background: #00ff88;
+      color: #0f1115;
+    }
+    footer {
+      margin-top: 60px;
+      padding: 20px;
+      font-size: 12px;
+      color: #9fb0c7;
+    }
   </style>
 </head>
 <body>
   <header>
-    <img src="logo-bt.png" alt="Logo Big Trato"/>
-    <h1>Big Trato • Sistema CRM + Financeiro</h1>
+    <h1>Big Trato • Home</h1>
   </header>
 
-  <nav>
-    <button class="btn" onclick="window.location.href='painel.html'">📊 Painel de Orçamentos</button>
-    <button class="btn" onclick="window.location.href='Gerador de orçamentos.html'">📝 Gerar Orçamento</button>
-    <button class="btn" onclick="window.location.href='Cadastro.html'">👤 Cadastro de Clientes</button>
-    <button class="btn" onclick="window.location.href='financas.html'">💰 Painel Financeiro</button>
-  </nav>
+  <div class="logo">
+    <img src="logo-bt.png" alt="Big Trato">
+  </div>
+
+  <h2>Big Trato • Sistema CRM + Financeiro</h2>
+
+  <div class="grid">
+    <div class="card">
+      <h3>EMPRESA</h3>
+      <a class="btn">Produtos</a>
+      <a class="btn">Serviços</a>
+      <a class="btn" href="financas.html">Finanças</a>
+    </div>
+    <div class="card">
+      <h3>CLIENTE</h3>
+      <a class="btn" href="Cadastro.html">Cadastro</a>
+      <a class="btn" href="painel.html">CRM</a>
+      <a class="btn" href="Gerador de orçamentos.html">Gerar Orçamento</a>
+    </div>
+  </div>
 
   <footer>
     Big Trato © 2025 — CRM e Financeiro
