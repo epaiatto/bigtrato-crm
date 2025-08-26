@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Big Trato • Painel (CRM)</title>
-  <link rel="stylesheet" href="painel.css">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Big Trato • Painel (CRM)</title>
+<link rel="stylesheet" href="painel.css">
 </head>
 <body>
 <header>
-  <img src="logo-bt.png" alt="Big Trato" style="height:50px">
+  <strong>CRM — Orçamentos</strong>
   <div>
     <button class="homebtn" onclick="location.href='home.html'">Home</button>
     <button class="primary" id="btnNovo">Novo Orçamento (gerador)</button>
@@ -23,6 +23,7 @@
       <option>Pendente</option>
       <option>Aprovado</option>
       <option>Negado</option>
+      <option>Serviço Concluído</option>
     </select>
   </div>
 
@@ -36,9 +37,6 @@
   </table>
 </div>
 
-<!-- Firebase config -->
-<script src="bt_firebase.js"></script>
-<!-- Lógica do painel -->
 <script src="painel.js"></script>
 </body>
 </html>
