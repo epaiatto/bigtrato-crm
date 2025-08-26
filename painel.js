@@ -6,12 +6,12 @@ import {
 
 // ===== CONFIG FIREBASE =====
 const firebaseConfig = {
-  apiKey: "SUA_KEY",
-  authDomain: "SEU_PROJETO.firebaseapp.com",
-  projectId: "SEU_PROJETO",
-  storageBucket: "SEU_PROJETO.appspot.com",
-  messagingSenderId: "XXX",
-  appId: "XXX"
+  apiKey: "AIzaSyDhPL394SjXkgbrD6_dJSHN3vJ2Zou9erE",
+  authDomain: "bigtrato-3a134.firebaseapp.com",
+  projectId: "bigtrato-3a134",
+  storageBucket: "bigtrato-3a134.firebasestorage.app",
+  messagingSenderId: "604650099192",
+  appId: "1:604650099192:web:86931f6066bf221080c60d"
 };
 
 const app = initializeApp(firebaseConfig);
