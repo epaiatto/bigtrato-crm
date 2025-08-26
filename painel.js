@@ -27,6 +27,16 @@ async function carregar() {
   let rows = [];
   snap.forEach(docSnap => rows.push({ ...docSnap.data(), _id: docSnap.id }));
 
+  // ====== CARREGAR ORÇAMENTOS ======
+async function carregar() {
+  tbody.innerHTML = "";
+  const snap = await getDocs(collection(db, "quotes"));
+  let rows = [];
+  snap.forEach(docSnap => rows.push({ ...docSnap.data(), _id: docSnap.id }));
+
+  // 🔎 TESTE: mostrar no console se realmente está vindo algo do Firestore
+  console.log("Orçamentos carregados:", rows);
+
   // filtros
   const termo = search.value.toLowerCase();
   const filtro = statusFilter.value;
