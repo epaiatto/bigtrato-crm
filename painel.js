@@ -9,7 +9,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyDhPL394SjXkgbrD6_dJSHN3vJ2Zou9erE",
   authDomain: "bigtrato-3a134.firebaseapp.com",
   projectId: "bigtrato-3a134",
-  storageBucket: "bigtrato-3a134.firebasestorage.app",
+  storageBucket: "bigtrato-3a134.appspot.com", // ✅ corrigido
   messagingSenderId: "604650099192",
   appId: "1:604650099192:web:86931f6066bf221080c60d"
 };
@@ -41,24 +41,30 @@ async function carregar() {
   rows.forEach(q => {
     const tr = document.createElement("tr");
 
-    // Tratar data (string ISO ou Timestamp)
+    // === Data formatada ===
     let dataFormatada = "-";
     if (q.createdAt) {
       try {
         const d = new Date(q.createdAt);
-        if (!isNaN(d.getTime())) {
-          dataFormatada = d.toLocaleString("pt-BR");
-        }
-      } catch (e) {
-        dataFormatada = q.createdAt; // fallback
-      }
+        if (!isNaN(d.getTime())) dataFormatada = d.toLocaleString("pt-BR");
+      } catch { dataFormatada = q.createdAt; }
+    }
+
+    // === Calcular total ===
+    let total = 0;
+    if (q.itens && Array.isArray(q.itens)) {
+      total = q.itens.reduce((soma, item) => {
+        const preco = Number(item.preco || 0);
+        const qtd = Number(item.qtd || 1);
+        return soma + preco * qtd;
+      }, 0);
     }
 
     tr.innerHTML = `
       <td>${q.id ?? ""}</td>
       <td>${q.cliente || "-"}</td>
       <td>${dataFormatada}</td>
-      <td>R$ ${q.total ?? "-"}</td>
+      <td>R$ ${total.toFixed(2)}</td>
       <td>
         <select class="status">
           <option ${q.status === "Pendente" ? "selected" : ""}>Pendente</option>
