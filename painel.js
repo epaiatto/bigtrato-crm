@@ -1,4 +1,3 @@
-// painel.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { 
   getFirestore, collection, getDocs, doc, updateDoc, deleteDoc 
@@ -26,9 +25,7 @@ async function carregar() {
   tbody.innerHTML = "";
   const snap = await getDocs(collection(db, "quotes"));
   let rows = [];
-  snap.forEach(docSnap => {
-    rows.push({ ...docSnap.data(), _id: docSnap.id });
-  });
+  snap.forEach(docSnap => rows.push({ ...docSnap.data(), _id: docSnap.id }));
 
   // filtros
   const termo = search.value.toLowerCase();
@@ -41,7 +38,7 @@ async function carregar() {
   rows.forEach(q => {
     const tr = document.createElement("tr");
 
-    // === Data formatada ===
+    // === Data ===
     let dataFormatada = "-";
     if (q.createdAt) {
       try {
@@ -50,7 +47,7 @@ async function carregar() {
       } catch { dataFormatada = q.createdAt; }
     }
 
-    // === Calcular total ===
+    // === Total ===
     let total = 0;
     if (q.itens && Array.isArray(q.itens)) {
       total = q.itens.reduce((soma, item) => {
@@ -81,12 +78,7 @@ async function carregar() {
 
     // alterar status
     tr.querySelector(".status").addEventListener("change", async (e) => {
-      try {
-        await updateDoc(doc(db, "quotes", q._id), { status: e.target.value });
-        console.log("Status atualizado:", e.target.value);
-      } catch (err) {
-        alert("Erro ao atualizar status");
-      }
+      await updateDoc(doc(db, "quotes", q._id), { status: e.target.value });
     });
 
     // editar
