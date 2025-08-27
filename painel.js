@@ -25,20 +25,30 @@ const search = document.getElementById("search");
 const statusFilter = document.getElementById("statusFilter");
 
 // ===== LOGIN ANÔNIMO =====
+import { getAuth, signInAnonymously, onAuthStateChanged } 
+  from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+const auth = getAuth(app);
+
+// Observa mudanças de autenticação
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    console.log("👤 Usuário autenticado:", user.uid);
+    carregar();
+  } else {
+    console.log("⚠️ Nenhum usuário logado");
+  }
+});
+
+// Faz login anônimo
 signInAnonymously(auth)
+  .then(() => {
+    console.log("✅ Login anônimo iniciado");
+  })
   .catch((error) => {
     console.error("❌ Erro no login anônimo:", error.code, error.message);
   });
 
-// só roda depois que login for feito
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    console.log("✅ Login anônimo feito:", user.uid);
-    carregar();
-  } else {
-    console.error("⚠️ Nenhum usuário autenticado");
-  }
-});
 
 // ====== CARREGAR ORÇAMENTOS ======
 async function carregar() {
