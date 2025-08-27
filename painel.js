@@ -1,8 +1,10 @@
-// painel.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { 
   getFirestore, collection, getDocs, doc, updateDoc, deleteDoc 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { 
+  getAuth, signInAnonymously 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 // ===== CONFIG FIREBASE =====
 const firebaseConfig = {
@@ -16,6 +18,17 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
+
+// === LOGIN ANÔNIMO ===
+signInAnonymously(auth)
+  .then(() => {
+    console.log("✅ Autenticado anonimamente no Firebase");
+    carregar(); // só carrega dados depois de logar
+  })
+  .catch((error) => {
+    console.error("Erro ao autenticar anonimamente:", error);
+  });
 
 const tbody = document.getElementById("tbody");
 const search = document.getElementById("search");
@@ -28,9 +41,8 @@ async function carregar() {
   let rows = [];
   snap.forEach(docSnap => rows.push({ ...docSnap.data(), _id: docSnap.id }));
 
-  console.log("Orçamentos carregados:", rows); // 👀 debug no console
+  console.log("Orçamentos carregados:", rows);
 
-  // filtros
   const termo = search.value.toLowerCase();
   const filtro = statusFilter.value;
   rows = rows.filter(r =>
@@ -40,8 +52,6 @@ async function carregar() {
 
   rows.forEach(q => {
     const tr = document.createElement("tr");
-
-    // === Data ===
     let dataFormatada = "-";
     if (q.createdAt) {
       try {
@@ -50,7 +60,6 @@ async function carregar() {
       } catch { dataFormatada = q.createdAt; }
     }
 
-    // === Total ===
     let total = 0;
     if (q.itens && Array.isArray(q.itens)) {
       total = q.itens.reduce((soma, item) => {
@@ -79,18 +88,15 @@ async function carregar() {
       </td>
     `;
 
-    // alterar status
     tr.querySelector(".status").addEventListener("change", async (e) => {
       await updateDoc(doc(db, "quotes", q._id), { status: e.target.value });
     });
 
-    // editar
     tr.querySelector(".editar").addEventListener("click", () => {
       localStorage.setItem("bt_load_quote", JSON.stringify(q));
       window.location.href = "Gerador de orçamentos.html";
     });
 
-    // deletar
     tr.querySelector(".delete").addEventListener("click", async () => {
       if (confirm("Excluir este orçamento?")) {
         await deleteDoc(doc(db, "quotes", q._id));
@@ -104,4 +110,3 @@ async function carregar() {
 
 search.addEventListener("input", carregar);
 statusFilter.addEventListener("change", carregar);
-carregar();
