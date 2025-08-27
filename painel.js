@@ -1,3 +1,4 @@
+// painel.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { 
   getFirestore, collection, getDocs, doc, updateDoc, deleteDoc 
@@ -8,7 +9,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyDhPL394SjXkgbrD6_dJSHN3vJ2Zou9erE",
   authDomain: "bigtrato-3a134.firebaseapp.com",
   projectId: "bigtrato-3a134",
-  storageBucket: "bigtrato-3a134.firebasestorage.app", // <- corrigido
+  storageBucket: "bigtrato-3a134.firebasestorage.app", // corrigido para o valor exato do painel Firebase
   messagingSenderId: "604650099192",
   appId: "1:604650099192:web:86931f6066bf221080c60d"
 };
@@ -23,90 +24,89 @@ const statusFilter = document.getElementById("statusFilter");
 // ====== CARREGAR ORÇAMENTOS ======
 async function carregar() {
   tbody.innerHTML = "";
-  const snap = await getDocs(collection(db, "quotes"));
-  let rows = [];
-  snap.forEach(docSnap => rows.push({ ...docSnap.data(), _id: docSnap.id }));
+  try {
+    const snap = await getDocs(collection(db, "quotes"));
+    let rows = [];
+    snap.forEach(docSnap => rows.push({ ...docSnap.data(), _id: docSnap.id }));
 
-  // ====== CARREGAR ORÇAMENTOS ======
-async function carregar() {
-  tbody.innerHTML = "";
-  const snap = await getDocs(collection(db, "quotes"));
-  let rows = [];
-  snap.forEach(docSnap => rows.push({ ...docSnap.data(), _id: docSnap.id }));
+    // DEBUG: mostrar no console o que veio do Firestore
+    console.log("Orçamentos carregados do Firestore:", rows);
 
-  // 🔎 TESTE: mostrar no console se realmente está vindo algo do Firestore
-  console.log("Orçamentos carregados:", rows);
+    // filtros
+    const termo = search.value.toLowerCase();
+    const filtro = statusFilter.value;
+    rows = rows.filter(r =>
+      (!termo || (r.cliente || "").toLowerCase().includes(termo)) &&
+      (!filtro || r.status === filtro)
+    );
 
-  // filtros
-  const termo = search.value.toLowerCase();
-  const filtro = statusFilter.value;
-  rows = rows.filter(r =>
-    (!termo || (r.cliente || "").toLowerCase().includes(termo)) &&
-    (!filtro || r.status === filtro)
-  );
+    rows.forEach(q => {
+      const tr = document.createElement("tr");
 
-  rows.forEach(q => {
-    const tr = document.createElement("tr");
-
-    // === Data ===
-    let dataFormatada = "-";
-    if (q.createdAt) {
-      try {
-        const d = new Date(q.createdAt);
-        if (!isNaN(d.getTime())) dataFormatada = d.toLocaleString("pt-BR");
-      } catch { dataFormatada = q.createdAt; }
-    }
-
-    // === Total ===
-    let total = 0;
-    if (q.itens && Array.isArray(q.itens)) {
-      total = q.itens.reduce((soma, item) => {
-        const preco = Number(item.preco || 0);
-        const qtd = Number(item.qtd || 1);
-        return soma + preco * qtd;
-      }, 0);
-    }
-
-    tr.innerHTML = `
-      <td>${q.id ?? ""}</td>
-      <td>${q.cliente || "-"}</td>
-      <td>${dataFormatada}</td>
-      <td>R$ ${total.toFixed(2)}</td>
-      <td>
-        <select class="status">
-          <option ${q.status === "Pendente" ? "selected" : ""}>Pendente</option>
-          <option ${q.status === "Aprovado" ? "selected" : ""}>Aprovado</option>
-          <option ${q.status === "Negado" ? "selected" : ""}>Negado</option>
-          <option ${q.status === "Serviço Concluído" ? "selected" : ""}>Serviço Concluído</option>
-        </select>
-      </td>
-      <td class="actions">
-        <button class="editar">Editar no gerador</button>
-        <button class="delete">x</button>
-      </td>
-    `;
-
-    // alterar status
-    tr.querySelector(".status").addEventListener("change", async (e) => {
-      await updateDoc(doc(db, "quotes", q._id), { status: e.target.value });
-    });
-
-    // editar
-    tr.querySelector(".editar").addEventListener("click", () => {
-      localStorage.setItem("bt_load_quote", JSON.stringify(q));
-      window.location.href = "Gerador de orçamentos.html";
-    });
-
-    // deletar
-    tr.querySelector(".delete").addEventListener("click", async () => {
-      if (confirm("Excluir este orçamento?")) {
-        await deleteDoc(doc(db, "quotes", q._id));
-        carregar();
+      // === Data ===
+      let dataFormatada = "-";
+      if (q.createdAt) {
+        try {
+          const d = new Date(q.createdAt);
+          if (!isNaN(d.getTime())) dataFormatada = d.toLocaleString("pt-BR");
+        } catch { dataFormatada = q.createdAt; }
       }
-    });
 
-    tbody.appendChild(tr);
-  });
+      // === Total ===
+      let total = 0;
+      if (q.itens && Array.isArray(q.itens)) {
+        total = q.itens.reduce((soma, item) => {
+          const preco = Number(item.preco || 0);
+          const qtd = Number(item.qtd || 1);
+          return soma + preco * qtd;
+        }, 0);
+      } else if (q.total) {
+        total = Number(q.total);
+      }
+
+      tr.innerHTML = `
+        <td>${q.id ?? ""}</td>
+        <td>${q.cliente || "-"}</td>
+        <td>${dataFormatada}</td>
+        <td>R$ ${total.toFixed(2)}</td>
+        <td>
+          <select class="status">
+            <option ${q.status === "Pendente" ? "selected" : ""}>Pendente</option>
+            <option ${q.status === "Aprovado" ? "selected" : ""}>Aprovado</option>
+            <option ${q.status === "Negado" ? "selected" : ""}>Negado</option>
+            <option ${q.status === "Serviço Concluído" ? "selected" : ""}>Serviço Concluído</option>
+          </select>
+        </td>
+        <td class="actions">
+          <button class="editar">Editar no gerador</button>
+          <button class="delete">x</button>
+        </td>
+      `;
+
+      // alterar status
+      tr.querySelector(".status").addEventListener("change", async (e) => {
+        await updateDoc(doc(db, "quotes", q._id), { status: e.target.value });
+      });
+
+      // editar
+      tr.querySelector(".editar").addEventListener("click", () => {
+        localStorage.setItem("bt_load_quote", JSON.stringify(q));
+        window.location.href = "Gerador de orçamentos.html";
+      });
+
+      // deletar
+      tr.querySelector(".delete").addEventListener("click", async () => {
+        if (confirm("Excluir este orçamento?")) {
+          await deleteDoc(doc(db, "quotes", q._id));
+          carregar();
+        }
+      });
+
+      tbody.appendChild(tr);
+    });
+  } catch (err) {
+    console.error("Erro ao carregar orçamentos:", err);
+  }
 }
 
 search.addEventListener("input", carregar);
