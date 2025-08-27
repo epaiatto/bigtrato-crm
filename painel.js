@@ -23,11 +23,11 @@ const auth = getAuth(app);
 // === LOGIN ANÔNIMO ===
 signInAnonymously(auth)
   .then(() => {
-    console.log("✅ Autenticado anonimamente no Firebase");
-    carregar(); // só carrega dados depois de logar
+    console.log("✅ Login anônimo feito com sucesso");
+    carregar();
   })
   .catch((error) => {
-    console.error("Erro ao autenticar anonimamente:", error);
+    console.error("❌ Erro no login anônimo:", error.code, error.message);
   });
 
 const tbody = document.getElementById("tbody");
